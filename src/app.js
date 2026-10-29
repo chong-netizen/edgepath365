@@ -889,7 +889,7 @@ function renderDevice() {
     ${i < SIGNAL_STAGES.length - 1 ? `<span class="signal-arrow">${arrow}</span>` : ""}
   </div>`).join("");
   const gallery = Object.values(SCENES).map((s) => `<button class="scene-shot" data-lightbox="${s.effect}" data-caption="${s.title} · ${s.tag} · 标注效果图">
-    <img src="${s.effect}" alt="${s.title} 标注效果图">
+    <img src="${s.effect}" alt="${s.title} 标注效果图" loading="lazy">
     <span><b>${s.label}</b>${s.tag}</span>
   </button>`).join("");
 
