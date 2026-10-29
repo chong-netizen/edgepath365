@@ -1,0 +1,41 @@
+{
+  "name": "EDGEPATH 365 · 从零到边缘智能",
+  "short_name": "EDGEPATH",
+  "description": "嵌入式 Linux × 机器视觉的 365 天学习路线、项目实验室与边缘视觉模拟。",
+  "lang": "zh-CN",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07100e",
+  "theme_color": "#07100e",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "路线",
+      "short_name": "路线",
+      "url": "./#/route",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "项目实验室",
+      "short_name": "实验室",
+      "url": "./#/lab",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
