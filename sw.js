@@ -1,5 +1,5 @@
-/* EDGEPATH 365 offline cache */
-const CACHE = "edgepath365-v1";
+﻿/* EDGEPATH 365 offline cache */
+const CACHE = "edgepath365-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const ASSETS = [
   "./src/app.js",
   "./src/data.js",
   "./src/labs.js",
+  "./src/device.js",
   "./assets/favicon.svg",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
@@ -16,7 +17,18 @@ const ASSETS = [
   "./assets/board.jpg",
   "./assets/camera.jpg",
   "./assets/bench.jpg",
-  "./assets/exploded.png"
+  "./assets/exploded.png",
+  "./assets/device/exploded-clean.jpg",
+  "./assets/device/exploded-annotated.jpg",
+  "./assets/device/device-external.jpg",
+  "./assets/device/factory.jpg",
+  "./assets/device/safety.jpg",
+  "./assets/device/warehouse.jpg",
+  "./assets/device/logistics.jpg",
+  "./assets/device/effect-factory.jpg",
+  "./assets/device/effect-safety.jpg",
+  "./assets/device/effect-warehouse.jpg",
+  "./assets/device/effect-logistics.jpg"
 ];
 
 self.addEventListener("install", (event) => {
@@ -61,3 +73,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+

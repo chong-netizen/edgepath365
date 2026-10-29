@@ -1,5 +1,6 @@
 import { DATA } from "./data.js";
 import { LABS, MACHINES } from "./labs.js";
+import { DEVICE_MODULES, CAPABILITIES, SIGNAL_STAGES, SCENES } from "./device.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -35,6 +36,8 @@ function loadProgress() {
 
 const progress = loadProgress();
 let labFilter = "all";
+let activeDeviceModule = "camera";
+let activeScene = "factory";
 let simState = { lab: null, step: 0, res: 416, precision: "INT8", runtime: "ONNX", roi: true, running: false };
 const focus = { seconds: 25 * 60, running: false, timer: null };
 
@@ -140,6 +143,7 @@ function parseRoute() {
   const h = (location.hash || "#/").replace(/^#/, "");
   if (h === "/" || h === "") return { name: "home" };
   if (h === "/route") return { name: "route" };
+  if (h === "/device") return { name: "device" };
   if (h === "/lab") return { name: "lab" };
   if (h.startsWith("/lab/")) return { name: "labDetail", id: h.split("/")[2] };
   if (h === "/machine") return { name: "machine" };
@@ -473,7 +477,8 @@ function projectCard(id) {
 }
 
 function projectGrid() {
-  const ids = LAB_ORDER.filter((id) => labFilter === "all" || labGroup(LABS[id].phase) === labFilter);
+  const ids = LAB_ORDER.filter((id) => labFilter === "all" || labGroup(LABS[id].phase) === labFilter)
+    .filter((id) => !(labFilter === "all" && id === "p8"));
   return ids.map(projectCard).join("");
 }
 
@@ -484,6 +489,15 @@ function renderLabList() {
 
   return `<div class="page wrap">
     ${pageHead("PROJECT LAB / 8 MISSIONS", "把项目拆开", "每个项目都有目标、步骤、失败模式、验收与参数模拟。先点开一台机器，再决定怎么拆。", `<div class="head-side"><strong>${labDoneCount()}/8</strong>LABS DONE</div>`)}
+    <div class="featured-lab">
+      <div class="fl-image"><img src="assets/device/effect-warehouse.jpg" alt="Edge Vision Box 仓库入侵检测场景"></div>
+      <div class="fl-copy">
+        <div class="kicker-row"><span class="tag mint">FEATURED / CAPSTONE</span><span class="tag amber">P8</span></div>
+        <h2>Edge Vision Box<br>从画面到事件</h2>
+        <p>七层硬件拆解、四个落地场景、可调参数与事件输出。先看清设备，再谈模型精度。</p>
+        <div class="fl-actions"><a class="btn btn-primary" href="#/device">打开设备全景 ${arrow}</a><a class="btn btn-ghost" href="#/lab/p8">看 P8 拆解</a></div>
+      </div>
+    </div>
     <div class="filter-row">${chips}</div>
     <div class="project-grid" id="projectGrid">${projectGrid()}</div>
     <div class="split-callout"><div><h3>不知道从哪开始？</h3><p>先看 P8 的七模块拆解，再回到 P1 做第一个 C++ 工具。项目是递进的，不是八个孤岛。</p></div><a class="btn btn-primary" href="#/lab/p8">打开 Capstone ${arrow}</a></div>
@@ -583,6 +597,9 @@ function renderLab(id) {
   const next = LAB_ORDER[idx + 1];
   const stageWide = lab.id === "p8" ? " wide contain" : "";
   const done = labDone(id);
+  const io = lab.id === "p8"
+    ? { input: "Camera / 4MP MJPEG", process: "V4L2 → 预处理 → ONNX/NCNN → NMS → 规则", output: "事件 JSON + 抓拍 + Dashboard" }
+    : { input: `${lab.pipeline[0]} / 采集`, process: lab.pipeline.slice(1, -1).join(" → "), output: `${lab.pipeline[lab.pipeline.length - 1]} / 交付` };
 
   return `<div class="page wrap">
     <a class="back-link" href="#/lab">${"←"} 返回实验室</a>
@@ -611,6 +628,13 @@ function renderLab(id) {
         <p>${p?.accept || lab.accept}</p>
       </div>
     </div>
+
+    <div class="lab-io-grid">
+      <div class="lab-io-card"><span>INPUT / 输入</span><strong>${io.input}</strong><p>先确认画面、光照、帧率与触发条件。</p></div>
+      <div class="lab-io-card"><span>PROCESS / 处理</span><strong>${io.process}</strong><p>模型只做感知；区域、连续帧、阈值由规则决定。</p></div>
+      <div class="lab-io-card"><span>OUTPUT / 结果</span><strong>${io.output}</strong><p>结果必须可查询、可处置、可追溯，而不只是一个标签。</p></div>
+    </div>
+    ${lab.id === "p8" ? `<div class="split-callout"><div><h3>这就是网站首页那台设备。</h3><p>去“设备”页看 7 层拆解、外部接口和 4 个落地场景模拟。</p></div><a class="btn btn-primary" href="#/device">打开设备全景 ${arrow}</a></div>` : ""}
 
     <div class="lab-content">
       <div><div class="eyebrow" style="margin-bottom:10px">DECOMPOSITION / ${lab.steps.length} STEPS</div><div class="step-list">${stepBtns}</div></div>
@@ -758,6 +782,173 @@ function renderJournal() {
   </div>`;
 }
 
+/* ------------------------------- DEVICE ------------------------------- */
+function moduleInspectorHTML(id) {
+  const m = DEVICE_MODULES.find((x) => x.id === id) || DEVICE_MODULES[0];
+  return `<div class="inspector-top">
+      <span class="tag mint">MODULE ${m.num} / 07</span>
+      <span class="tag ${m.tone === "amber" ? "amber" : ""}">${m.short}</span>
+    </div>
+    <h2>${m.title}</h2>
+    <p>${m.role}</p>
+    <div class="spec-stack">
+      <div class="spec-row"><span>规格</span><strong>${m.spec}</strong></div>
+      <div class="spec-row"><span>接口</span><strong>${m.io}</strong></div>
+      <div class="spec-row"><span>失效</span><strong>${m.failure}</strong></div>
+    </div>
+    <div class="inspector-test"><span>验收动作</span><p>${m.test}</p></div>
+    <a class="link-arrow" href="#/lab/p8">回到 Capstone 项目 ${arrow}</a>`;
+}
+
+function updateDeviceModule(id) {
+  const m = DEVICE_MODULES.find((x) => x.id === id);
+  if (!m) return;
+  activeDeviceModule = id;
+  const box = $("#moduleInspector");
+  if (box) box.innerHTML = moduleInspectorHTML(id);
+  $$("[data-module]").forEach((b) => b.classList.toggle("active", b.dataset.module === id));
+}
+
+function sceneStageHTML(scene) {
+  const zone = scene.zone
+    ? `<svg class="scene-zone" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="${scene.zone.map((p) => p.join(",")).join(" ")}"></polygon>
+      </svg>`
+    : "";
+  const boxes = scene.boxes.map((b, i) => `<div class="det-box ${b.tone}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--i:${i}">
+      <span>${b.label}</span>
+    </div>`).join("");
+  const metrics = scene.metrics.map((m) => `<div><span>${m[0]}</span><strong>${m[1]}</strong></div>`).join("");
+  return `<div class="scene-frame" id="sceneFrame">
+    <img src="${scene.image}" alt="${scene.title}">
+    <div class="scene-top">
+      <div class="scene-live"><i></i> LIVE / ${scene.tag}</div>
+      <div class="scene-time">14:32:05 · CAM-01</div>
+    </div>
+    ${zone}
+    ${boxes}
+    <div class="scene-hud">${metrics}</div>
+  </div>`;
+}
+
+function sceneConsoleHTML(scene) {
+  const dets = scene.detections.map((d) => `<div class="det-row">
+    <span class="det-dot ${d.status === "NG" || d.status === "ALERT" ? "red" : "green"}"></span>
+    <div><strong>${d.name}</strong><small>${d.meta}</small></div>
+    <span class="tag ${d.status === "NG" || d.status === "ALERT" ? "red" : "mint"}">${d.status}</span>
+  </div>`).join("");
+  return `<div class="scene-console-head">
+      <div><div class="eyebrow">INFERENCE OUTPUT</div><h3>当前帧结果</h3></div>
+      <span class="tag mint">${scene.tag}</span>
+    </div>
+    <div class="det-list">${dets}</div>
+    <div class="event-json"><div class="event-json-head">EVENT / JSON</div><pre>${esc(JSON.stringify(scene.event, null, 2))}</pre></div>
+    <div class="scene-result"><span>RESULT</span><strong>${scene.result}</strong></div>
+    <div class="scene-actions">
+      <button class="btn btn-primary" data-scene-run>运行检测 ${arrow}</button>
+      <button class="btn btn-ghost" data-lightbox="${scene.effect}" data-caption="${scene.title} · 标注效果图">查看标注图</button>
+    </div>`;
+}
+
+function renderSceneSim() {
+  const scene = SCENES[activeScene] || SCENES.factory;
+  return `<div class="scene-layout">
+    ${sceneStageHTML(scene)}
+    <aside class="panel scene-console" id="sceneConsole">${sceneConsoleHTML(scene)}</aside>
+  </div>
+  <div class="scene-explain">
+    <div><span>01 / INPUT</span><strong>摄像头画面</strong><p>固定机位、稳定光照；先保证能看清，再谈模型。</p></div>
+    <div><span>02 / PROCESS</span><strong>检测 + 规则</strong><p>模型给出框和类别，规则判断区域、连续帧和业务阈值。</p></div>
+    <div><span>03 / OUTPUT</span><strong>事件 + 证据</strong><p>不是一张热力图，而是可查询、可处置的事件。</p></div>
+  </div>`;
+}
+
+function updateScene(id) {
+  if (!SCENES[id]) return;
+  activeScene = id;
+  const host = $("#sceneSim");
+  if (host) host.innerHTML = renderSceneSim();
+  $$("[data-scene]").forEach((b) => b.classList.toggle("active", b.dataset.scene === id));
+}
+
+function renderDevice() {
+  const m = DEVICE_MODULES.find((x) => x.id === activeDeviceModule) || DEVICE_MODULES[0];
+  const hotspots = DEVICE_MODULES.map((x) => `<button class="hotspot ${x.id === activeDeviceModule ? "active" : ""}" style="left:${x.x}%;top:${x.y}%" data-module="${x.id}" aria-label="${x.title}">${x.num}</button>`).join("");
+  const moduleCards = DEVICE_MODULES.map((x) => `<button class="module-card ${x.id === activeDeviceModule ? "active" : ""}" data-module="${x.id}">
+    <span class="mc-num">${x.num}</span>
+    <strong>${x.title}</strong>
+    <small>${x.short}</small>
+  </button>`).join("");
+  const caps = CAPABILITIES.map((c) => `<div class="cap-card">
+    <div class="cap-code">${c.code} / ${c.en}</div>
+    <h3>${c.title}</h3><p>${c.body}</p><span class="cap-out">${c.out}</span>
+  </div>`).join("");
+  const tabs = Object.values(SCENES).map((s) => `<button class="scene-tab ${s.id === activeScene ? "active" : ""}" data-scene="${s.id}"><span>${s.tag.split(" / ")[0]}</span><strong>${s.label}</strong></button>`).join("");
+  const stages = SIGNAL_STAGES.map((s, i) => `<div class="signal-stage ${s.tone}">
+    <div class="signal-num">${s.n}</div><h4>${s.t}</h4><p>${s.s}</p><small>${s.d}</small>
+    ${i < SIGNAL_STAGES.length - 1 ? `<span class="signal-arrow">${arrow}</span>` : ""}
+  </div>`).join("");
+  const gallery = Object.values(SCENES).map((s) => `<button class="scene-shot" data-lightbox="${s.effect}" data-caption="${s.title} · ${s.tag} · 标注效果图">
+    <img src="${s.effect}" alt="${s.title} 标注效果图">
+    <span><b>${s.label}</b>${s.tag}</span>
+  </button>`).join("");
+
+  return `<div class="page wrap device-page">
+    <a class="back-link" href="#/lab">${"←"} 返回实验室</a>
+    ${pageHead("DEVICE / EDGE VISION BOX", "一台设备，七层拆解", "不是黑盒。先看清每一层做什么、怎么坏、怎么验，再谈模型和指标。", `<div class="head-side"><strong>7</strong>MODULES / P8</div>`)}
+
+    <div class="device-hero">
+      <div class="device-stage">
+        <img src="assets/device/exploded-clean.jpg" alt="Edge Vision Box 内部爆炸图">
+        <div class="stage-label">EXPLODED ASSEMBLY / CLICK A MODULE</div>
+        ${hotspots}
+        <div class="device-stage-foot">7 MODULES · 7 FAILURE MODES · 7 ACCEPTANCE TESTS</div>
+      </div>
+      <aside class="panel module-inspector" id="moduleInspector">${moduleInspectorHTML(m.id)}</aside>
+    </div>
+
+    <div class="module-strip">${moduleCards}</div>
+
+    <div class="device-plates">
+      <button class="plate-card" data-lightbox="assets/device/exploded-annotated.jpg" data-caption="内部拆解技术图 · 7 个模块">
+        <span>01 / TECHNICAL PLATE</span><strong>内部拆解图</strong><small>模块 / 接口 / 失效 / 验收</small>
+      </button>
+      <button class="plate-card" data-lightbox="assets/device/device-external.jpg" data-caption="外部接口与安装 · 概念设计">
+        <span>02 / EXTERNAL PLATE</span><strong>外部接口图</strong><small>镜头 / 网口 / USB-C / 散热</small>
+      </button>
+    </div>
+
+    <section class="device-section">
+      <div class="section-head"><div><div class="eyebrow">CAPABILITIES</div><h2>它到底能做什么</h2></div><span class="tag">从像素到事件</span></div>
+      <div class="cap-grid">${caps}</div>
+      <div class="io-formula">
+        <div><span>INPUT</span><strong>FRAME</strong><small>摄像头 / 视频流</small></div>
+        <b>${arrow}</b>
+        <div><span>MODEL</span><strong>PERCEPTION</strong><small>检测 / 分类 / 分割</small></div>
+        <b>${arrow}</b>
+        <div><span>RULE</span><strong>DECISION</strong><small>区域 / 连续帧 / 阈值</small></div>
+        <b>${arrow}</b>
+        <div><span>OUTPUT</span><strong>EVENT</strong><small>JSON + 抓拍 + 告警</small></div>
+      </div>
+    </section>
+
+    <section class="device-section">
+      <div class="section-head"><div><div class="eyebrow">SCENE SIMULATOR</div><h2>落地场景，不是口号</h2><p>切换应用，观察同一台设备如何把画面变成不同的业务结果。</p></div><a class="link-arrow" href="#/lab/p8">进入 Capstone 项目 ${arrow}</a></div>
+      <div class="scene-tabs">${tabs}</div>
+      <div id="sceneSim">${renderSceneSim()}</div>
+      <div class="scene-gallery">${gallery}</div>
+    </section>
+
+    <section class="device-section">
+      <div class="section-head"><div><div class="eyebrow">SIGNAL CHAIN</div><h2>一帧画面，六段旅程</h2></div><span class="tag">端到端 &lt; 100 ms</span></div>
+      <div class="signal-map">${stages}</div>
+    </section>
+
+    <div class="split-callout"><div><h3>还想看它怎么被做出来？</h3><p>从 C++ 工具、驱动、镜像，到模型训练和端侧推理，Capstone 把七个模块串成一条链。</p></div><a class="btn btn-primary" href="#/lab/p8">打开 P8 拆解 ${arrow}</a></div>
+  </div>`;
+}
+
+
 /* ------------------------------- ROUTER / EVENTS ------------------------------- */
 function render() {
   const route = parseRoute();
@@ -765,6 +956,7 @@ function render() {
   let html = "";
   if (route.name === "home") html = renderHome();
   else if (route.name === "route") html = renderRoute();
+  else if (route.name === "device") html = renderDevice();
   else if (route.name === "lesson") html = renderLesson(route.n);
   else if (route.name === "lab") html = renderLabList();
   else if (route.name === "labDetail") html = renderLab(route.id);
@@ -776,7 +968,7 @@ function render() {
   app.innerHTML = html;
   updateChrome();
   updateScroll();
-  document.title = `${route.name === "home" ? "从零到边缘智能" : route.name === "lesson" ? `W${pad(route.n)} · ${WEEK[route.n]?.title || ""}` : route.name === "labDetail" ? LABS[route.id]?.title || "实验室" : "EDGEPATH 365"} · EDGEPATH 365`;
+  document.title = `${route.name === "home" ? "从零到边缘智能" : route.name === "device" ? "设备 · Edge Vision Box" : route.name === "lesson" ? `W${pad(route.n)} · ${WEEK[route.n]?.title || ""}` : route.name === "labDetail" ? LABS[route.id]?.title || "实验室" : "EDGEPATH 365"} · EDGEPATH 365`;
   window.scrollTo(0, 0);
   if (route.name === "lesson") updateFocusUI();
   if (route.name === "labDetail") updateSimMetrics();
@@ -948,6 +1140,18 @@ app.addEventListener("click", (e) => {
   const filter = e.target.closest("[data-filter]");
   if (filter) { labFilter = filter.dataset.filter; rerenderProjectGrid(); return; }
 
+  const moduleBtn = e.target.closest("[data-module]");
+  if (moduleBtn) { updateDeviceModule(moduleBtn.dataset.module); return; }
+
+  const sceneTab = e.target.closest("[data-scene]");
+  if (sceneTab) { updateScene(sceneTab.dataset.scene); return; }
+
+  const sceneRun = e.target.closest("[data-scene-run]");
+  if (sceneRun) { runScene(); return; }
+
+  const lightboxBtn = e.target.closest("[data-lightbox]");
+  if (lightboxBtn) { openLightbox(lightboxBtn.dataset.lightbox, lightboxBtn.dataset.caption || ""); return; }
+
   const hot = e.target.closest("[data-hotspot]");
   if (hot) { updateHotspot(Number(hot.dataset.hotspot)); return; }
 
@@ -1003,6 +1207,10 @@ app.addEventListener("click", (e) => {
   }
 });
 
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-close-lightbox]") || e.target.classList.contains("lightbox")) closeLightbox();
+});
+
 document.addEventListener("change", (e) => {
   if (e.target.matches("[data-roi]")) {
     simState.roi = e.target.checked;
@@ -1021,7 +1229,7 @@ document.addEventListener("input", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input,textarea,select") || e.target.isContentEditable) return;
-  if (e.key === "Escape") { setMenu(false); return; }
+  if (e.key === "Escape") { closeLightbox(); setMenu(false); return; }
   if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
   const route = parseRoute();
   if (route.name === "lesson") {
@@ -1042,6 +1250,35 @@ $$("#mainNav a").forEach((a) => a.addEventListener("click", () => setMenu(false)
 
 window.addEventListener("scroll", updateScroll, { passive: true });
 window.addEventListener("hashchange", render);
+
+function runScene() {
+  const frame = $("#sceneFrame");
+  if (!frame) return;
+  frame.classList.remove("running");
+  void frame.offsetWidth;
+  frame.classList.add("running");
+  const scene = SCENES[activeScene];
+  toast(`检测完成：${scene.result}`);
+  setTimeout(() => frame.classList.remove("running"), 2400);
+}
+
+function openLightbox(src, caption) {
+  const old = $("#lightbox");
+  if (old) old.remove();
+  const el = document.createElement("div");
+  el.id = "lightbox";
+  el.className = "lightbox";
+  el.innerHTML = `<button class="lightbox-close" data-close-lightbox aria-label="关闭">×</button>
+    <figure><img src="${src}" alt="${esc(caption)}"><figcaption>${esc(caption)}</figcaption></figure>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = "hidden";
+}
+
+function closeLightbox() {
+  const el = $("#lightbox");
+  if (el) el.remove();
+  document.body.style.overflow = "";
+}
 
 /* boot */
 updateFocusUI();
