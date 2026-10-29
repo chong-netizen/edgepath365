@@ -819,3 +819,6 @@ img{display:block;max-width:100%}
 }
 .scene-layout > .scene-frame{position:relative;z-index:1}
 .scene-layout > .scene-console{position:relative;z-index:4;background:#0c1916}
+/* keep P8 exploded image and hotspots in the same 4:3 frame */
+.lab-stage.wide.contain{aspect-ratio:4/3;height:auto;min-height:0}
+.lab-stage.wide.contain img{height:100%;object-fit:contain}
