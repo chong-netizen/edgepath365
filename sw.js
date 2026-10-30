@@ -1,5 +1,5 @@
 ﻿/* EDGEPATH 365 offline cache */
-const CACHE = "edgepath365-v3";
+const CACHE = "edgepath365-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -73,5 +73,6 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
 
 

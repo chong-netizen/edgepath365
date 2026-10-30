@@ -39,7 +39,7 @@ node server.mjs
 - 安装：iPad Safari 打开 → 分享 → **添加到主屏幕**
 - 安装后：首次在线加载会缓存全部 HTML/CSS/JS/图片；之后不联网也能打开
 - 已实测：Service Worker 作用域 `/edgepath365/`，离线可进入 Capstone 实验室、加载拆解图、运行 7 段管线
-- 更新：修改内容后把 `sw.js` 里的 `edgepath365-v3` 改成 `v3`，重新 push 到 GitHub
+- 更新：修改内容后把 `sw.js` 里的 `edgepath365-v4` 改成 `v4`，重新 push 到 GitHub
 
 > PWA 不是原生 App：不能后台运行、不能访问全部系统能力；iOS 可能在长期不用后清理缓存。要“永远离线、绝不依赖缓存”，才需要原生 App，而原生 App 需要 Mac + Xcode 或签名分发。
 
@@ -76,5 +76,6 @@ docs/            # 页面截图（开发预览）
 - 没有构建步骤、没有 npm 依赖、没有 CDN。
 - 建议 Chrome / Edge；项目调参台是示意模型，真实指标需在目标板子上 benchmark。
 - 机器图片用于学习与项目叙事；设备外观为视觉素材，不代表真实产品型号。
+
 
 
