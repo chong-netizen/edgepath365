@@ -2,21 +2,21 @@ export const DATA = {
   "phases": [
     {
       "code": "P0",
-      "title": "环境与操作",
-      "days": "D01–D21",
-      "weeks": "W01–W03",
+      "title": "单片机与工程环境",
+      "days": "D01–D28",
+      "weeks": "W01–W04",
       "color": "#2DD4BF",
-      "summary": "把学习环境、终端、Git、Python 和学习系统搭好。",
-      "gate": "里程碑：能独立完成目录整理、Git 提交与 Python 脚本。"
+      "summary": "先吃透一款 STM32：工具链、GPIO、时钟、UART、中断、定时器、ADC、I2C/SPI、DMA、状态机与 FreeRTOS；同时建立 Git、调试、文档和 BOM 习惯。",
+      "gate": "Gate 0（D28）：能独立 bring-up 一块 STM32 最小系统，点灯、按键、串口、定时器、ADC/I2C、RTOS 三任务全部跑通。"
     },
     {
       "code": "P1",
-      "title": "编程与系统基础",
-      "days": "D22–D70",
-      "weeks": "W04–W10",
+      "title": "C/C++ 与 Linux 基础",
+      "days": "D29–D70",
+      "weeks": "W05–W10",
       "color": "#5EEAD4",
-      "summary": "C 核心 → C++/STL/RAII → Linux 系统编程（C）→ 硬件接口。",
-      "gate": "Gate 1（D70）：C/C++ 工具、GDB/Valgrind、串口传感器、进程/线程。"
+      "summary": "C 指针/内存 → C++/RAII/STL/CMake → C/C++ 混合与调试 → Linux 系统编程 → 硬件接口，最后过 Gate 1。",
+      "gate": "Gate 1（D70）：C/C++ 工具、GDB/Valgrind、串口传感器、进程/线程、硬件接口逐项通过。"
     },
     {
       "code": "P2",
@@ -68,36 +68,36 @@ export const DATA = {
     {
       "n": 1,
       "phase": "P0",
-      "title": "环境与终端",
+      "title": "单片机起步 I：工具链、GPIO 与时钟",
       "days": [
         {
           "d": 1,
           "weekday": "周一",
-          "task": "概念日｜安装 Ubuntu 22.04/24.04（或 WSL2），理解文件系统、路径与家目录；合上资料画 1 页概念图",
-          "output": "1 页概念图",
+          "task": "概念日｜选定 STM32F103C8T6（或 STM32G431）最小系统板，安装 STM32CubeIDE、ST-Link 驱动和 Git；新建工程，配置时钟树与 GPIO，点亮第一个 LED",
+          "output": "点灯工程 + 工具链截图 + Git 仓库",
           "rest": false,
           "gate": null
         },
         {
           "d": 2,
           "weekday": "周二",
-          "task": "概念日｜掌握 20 个高频命令：ls/cd/pwd/mkdir/cp/mv/rm/find/grep/less；做 5 个最小验证，记下命令/代码",
-          "output": "5 条验证记录",
+          "task": "概念日｜GPIO 输入/输出、推挽/开漏、上下拉、按键去抖；同时补 C 的变量、类型、位运算、结构体在寄存器操作中的写法；做 5 个最小验证",
+          "output": "5 条验证记录 + 寄存器笔记",
           "rest": false,
           "gate": null
         },
         {
           "d": 3,
           "weekday": "周三",
-          "task": "实验日｜只用终端整理一个 50 文件的练习目录，做查找、复制、批量改名；从空目录独立完成，不抄完整答案",
-          "output": "可运行代码/实验记录",
+          "task": "实验日｜按键控制 LED、流水灯、串口 printf 重定向；从空工程独立完成，不抄完整工程",
+          "output": "可运行代码 + 接线图",
           "rest": false,
           "gate": null
         },
         {
           "d": 4,
           "weekday": "周四",
-          "task": "调试日｜练习权限 chmod、管道、重定向、进程查看 ps/top；制造 2 个错误并修复，写根因",
+          "task": "调试日｜制造并定位 2 个真实问题：SWD 连不上、时钟配错、BOOT0 模式不对、复位异常；写根因和修复步骤",
           "output": "错误日志 + 根因",
           "rest": false,
           "gate": null
@@ -105,24 +105,24 @@ export const DATA = {
         {
           "d": 5,
           "weekday": "周五",
-          "task": "自测日｜命令行 20 题；口述绝对路径与相对路径；闭卷 20 分钟 + 口述 5 分钟",
-          "output": "错题 + 自评分",
+          "task": "自测日｜口述 GPIO 模式、时钟树、推挽 vs 开漏、按键去抖；闭卷 20 分钟 + 口述 5 分钟",
+          "output": "错题 + 自评",
           "rest": false,
           "gate": null
         },
         {
           "d": 6,
           "weekday": "周六",
-          "task": "项目日｜建立学习仓库：目录结构、README、环境截图、命令清单；4 小时，提交 Git + README",
-          "output": "commit + README",
+          "task": "项目日｜按键 + LED + 串口状态机：短按切换模式、长按复位、串口返回当前状态；4 小时，提交 Git + README",
+          "output": "commit + README + 状态机图",
           "rest": false,
           "gate": null
         },
         {
           "d": 7,
           "weekday": "周日",
-          "task": "复盘日｜回顾安装与命令错题，固定每天的学习时段；1-3-7 复习 + 周报 + 下周计划",
-          "output": "周报 KPT",
+          "task": "复盘日｜整理 CubeIDE 工程模板、接线规范和 BOM；固定每天学习时段；1-3-7 复习 + 周报 + 下周计划",
+          "output": "周报 KPT + BOM v1",
           "rest": false,
           "gate": null
         }
@@ -131,12 +131,12 @@ export const DATA = {
     {
       "n": 2,
       "phase": "P0",
-      "title": "Git、Markdown 与远程连接",
+      "title": "单片机起步 II：UART、中断与定时器",
       "days": [
         {
           "d": 8,
           "weekday": "周一",
-          "task": "概念日｜Git 三区模型：工作区、暂存区、版本库；commit/diff/log；合上资料画 1 页概念图",
+          "task": "概念日｜UART 帧格式、波特率、环形缓冲区；NVIC 中断优先级与现场保护；画 1 页中断/串口概念图",
           "output": "1 页概念图",
           "rest": false,
           "gate": null
@@ -144,7 +144,7 @@ export const DATA = {
         {
           "d": 9,
           "weekday": "周二",
-          "task": "概念日｜Markdown、SSH 密钥、scp/rsync、HTTP 基础；做 5 个最小验证，记下命令/代码",
+          "task": "概念日｜定时器时基、PWM、输入捕获、编码器接口、独立看门狗；做 5 个最小验证，记下寄存器/ HAL 配置",
           "output": "5 条验证记录",
           "rest": false,
           "gate": null
@@ -152,15 +152,15 @@ export const DATA = {
         {
           "d": 10,
           "weekday": "周三",
-          "task": "实验日｜创建 GitHub 仓库，完成 10 次有意义的 commit；从空目录独立完成，不抄完整答案",
-          "output": "可运行代码/实验记录",
+          "task": "实验日｜写一个串口命令行：LED on/off/status；用中断收发，加环形缓冲；再做 PWM 呼吸灯",
+          "output": "可运行代码 + 串口交互截图",
           "rest": false,
           "gate": null
         },
         {
           "d": 11,
           "weekday": "周四",
-          "task": "调试日｜用 SSH 登录另一台电脑或服务器，传文件并拉取仓库；制造 2 个错误并修复，写根因",
+          "task": "调试日｜制造并定位 2 个问题：串口乱码/丢包、中断卡死、优先级配置错误；写根因",
           "output": "错误日志 + 根因",
           "rest": false,
           "gate": null
@@ -168,24 +168,24 @@ export const DATA = {
         {
           "d": 12,
           "weekday": "周五",
-          "task": "自测日｜Git 场景题：撤销、回滚、冲突、分支；闭卷 20 分钟 + 口述 5 分钟",
-          "output": "错题 + 自评分",
+          "task": "自测日｜画 UART 时序图；解释中断现场、优先级、临界区；闭卷 20 分钟 + 口述 5 分钟",
+          "output": "错题 + 自评",
           "rest": false,
           "gate": null
         },
         {
           "d": 13,
           "weekday": "周六",
-          "task": "项目日｜个人知识库：目录、模板、第一周笔记、命令速查；4 小时，提交 Git + README",
-          "output": "commit + README",
+          "task": "项目日｜串口控制舵机/电机 + 状态回传；加入超时和错误码；4 小时，提交 Git + README",
+          "output": "commit + 演示视频",
           "rest": false,
           "gate": null
         },
         {
           "d": 14,
           "weekday": "周日",
-          "task": "复盘日｜整理 Git 命令卡；确认能独立恢复一次误删文件；1-3-7 复习 + 周报 + 下周计划",
-          "output": "周报 KPT",
+          "task": "复盘日｜用逻辑分析仪抓 UART 和 PWM；整理中断/定时器模板；1-3-7 复习 + 周报",
+          "output": "波形截图 + 周报",
           "rest": false,
           "gate": null
         }
@@ -194,12 +194,12 @@ export const DATA = {
     {
       "n": 3,
       "phase": "P0",
-      "title": "Python 起步与学习系统",
+      "title": "单片机起步 III：ADC、I2C/SPI 与 DMA",
       "days": [
         {
           "d": 15,
           "weekday": "周一",
-          "task": "概念日｜Python 语法、类型、列表、字典、文件读写；合上资料画 1 页概念图",
+          "task": "概念日｜ADC 分辨率、参考电压、采样时间、滤波；I2C 时序、地址、ACK/NACK；画 1 页总线概念图",
           "output": "1 页概念图",
           "rest": false,
           "gate": null
@@ -207,7 +207,7 @@ export const DATA = {
         {
           "d": 16,
           "weekday": "周二",
-          "task": "概念日｜函数、模块、venv、pip、异常处理；做 5 个最小验证，记下命令/代码",
+          "task": "概念日｜SPI 模式、片选、DMA 搬运；读一份传感器数据手册，标出寄存器/时序；做 5 个最小验证",
           "output": "5 条验证记录",
           "rest": false,
           "gate": null
@@ -215,15 +215,15 @@ export const DATA = {
         {
           "d": 17,
           "weekday": "周三",
-          "task": "实验日｜写 20 个小脚本：字符串、文件、目录、JSON；从空目录独立完成，不抄完整答案",
-          "output": "可运行代码/实验记录",
+          "task": "实验日｜I2C 扫描总线，读取 BME280/MPU6050（选一），串口输出；再用 SPI 驱动 OLED 或 Flash",
+          "output": "可运行代码 + 读数截图",
           "rest": false,
           "gate": null
         },
         {
           "d": 18,
           "weekday": "周四",
-          "task": "调试日｜写文件批量整理器，带命令行参数；制造 2 个错误并修复，写根因",
+          "task": "调试日｜制造并定位 2 个问题：I2C 无应答/上拉/地址错、SPI 模式错、DMA 覆盖；写根因",
           "output": "错误日志 + 根因",
           "rest": false,
           "gate": null
@@ -231,24 +231,24 @@ export const DATA = {
         {
           "d": 19,
           "weekday": "周五",
-          "task": "自测日｜Python 20 题；口述 list、tuple、dict 的差异；闭卷 20 分钟 + 口述 5 分钟",
-          "output": "错题 + 自评分",
+          "task": "自测日｜口述 ADC 误差来源、I2C vs SPI、DMA 的作用；闭卷 20 分钟 + 口述 5 分钟",
+          "output": "错题 + 自评",
           "rest": false,
           "gate": null
         },
         {
           "d": 20,
           "weekday": "周六",
-          "task": "项目日｜CLI 文件整理器 v1：dry-run、日志、README；4 小时，提交 Git + README",
-          "output": "commit + README",
+          "task": "项目日｜多传感器采集 + OLED 显示 + 串口 CSV；4 小时，提交 Git + README + 数据样例",
+          "output": "commit + CSV 样例",
           "rest": false,
           "gate": null
         },
         {
           "d": 21,
           "weekday": "周日",
-          "task": "复盘日｜Phase 0 里程碑自检；补齐环境与 Git；确定硬件方案；1-3-7 复习 + 周报 + 下周计划",
-          "output": "周报 KPT",
+          "task": "复盘日｜用 Python/pyserial 画一次串口数据；整理传感器驱动模板；1-3-7 复习 + 周报",
+          "output": "曲线图 + 周报",
           "rest": false,
           "gate": null
         }
@@ -256,21 +256,21 @@ export const DATA = {
     },
     {
       "n": 4,
-      "phase": "P1",
-      "title": "C 核心 I：编译、类型与控制",
+      "phase": "P0",
+      "title": "单片机起步 IV：状态机、RTOS 与 Gate 0",
       "days": [
         {
           "d": 22,
           "weekday": "周一",
-          "task": "概念日｜编译四阶段、变量与类型、运算符、格式化输入输出；合上资料画 1 页概念图",
-          "output": "1 页概念图",
+          "task": "概念日｜状态机、事件驱动、非阻塞编程；看门狗、复位原因、错误处理；画 1 页状态图",
+          "output": "1 页状态图",
           "rest": false,
           "gate": null
         },
         {
           "d": 23,
           "weekday": "周二",
-          "task": "概念日｜if/for/while、函数、作用域、递归、栈/堆/静态区；做 5 个最小验证，记下命令/代码",
+          "task": "概念日｜FreeRTOS 任务、队列、信号量、优先级、栈；低功耗模式与唤醒；做 5 个最小验证",
           "output": "5 条验证记录",
           "rest": false,
           "gate": null
@@ -278,15 +278,15 @@ export const DATA = {
         {
           "d": 24,
           "weekday": "周三",
-          "task": "实验日｜20 道 C 基础题：整数、浮点、字符、循环；从空目录独立完成，不抄完整答案",
-          "output": "可运行代码/实验记录",
+          "task": "实验日｜把多传感器项目改成 3 个 RTOS 任务：采集、显示、通信；用队列传数据",
+          "output": "可运行代码 + 任务表",
           "rest": false,
           "gate": null
         },
         {
           "d": 25,
           "weekday": "周四",
-          "task": "调试日｜命令行计算器：多文件、错误输入处理；制造 2 个错误并修复，写根因",
+          "task": "调试日｜制造并定位 2 个问题：栈溢出、优先级反转、死锁、看门狗复位；写根因",
           "output": "错误日志 + 根因",
           "rest": false,
           "gate": null
@@ -294,38 +294,38 @@ export const DATA = {
         {
           "d": 26,
           "weekday": "周五",
-          "task": "自测日｜手写 3 个小程序；解释栈、堆、静态区；闭卷 20 分钟 + 口述 5 分钟",
-          "output": "错题 + 自评分",
+          "task": "自测日｜口述 RTOS 调度、队列 vs 信号量、临界区、低功耗；闭卷 20 分钟 + 口述 5 分钟",
+          "output": "错题 + 自评",
           "rest": false,
           "gate": null
         },
         {
           "d": 27,
           "weekday": "周六",
-          "task": "项目日｜计算器 + Makefile + 10 个测试用例；4 小时，提交 Git + README",
-          "output": "commit + README",
+          "task": "项目日｜最小节点 v1：采集 + OLED + 串口 + 看门狗，连续运行 2 小时；提交 Git + README + 接线图",
+          "output": "commit + 2h 运行记录",
           "rest": false,
           "gate": null
         },
         {
           "d": 28,
           "weekday": "周日",
-          "task": "复盘日｜回顾本周错题与产出，补上未完成实验；1-3-7 复习 + 周报 + 下周计划",
-          "output": "周报 KPT",
+          "task": "Gate｜Gate 0：从空工程独立完成点灯、按键、串口、定时器、ADC/I2C、RTOS 三任务；整理 BOM、接线图、踩坑清单；未过项列入 buffer",
+          "output": "Gate 0 检查表 + 项目仓库",
           "rest": false,
-          "gate": null
+          "gate": "Gate 0：能独立 bring-up 一块 STM32 最小系统，并解释每个外设的配置。"
         }
       ]
     },
     {
       "n": 5,
       "phase": "P1",
-      "title": "C 核心 II：指针、内存与结构体",
+      "title": "C 核心：指针、内存与结构体",
       "days": [
         {
           "d": 29,
           "weekday": "周一",
-          "task": "概念日｜指针与地址、指针运算、数组退化、const、函数指针；合上资料画 1 页概念图",
+          "task": "概念日｜先用 30 分钟回顾 C 的编译、类型、控制流；再学指针与地址、指针运算、数组退化、const、函数指针；合上资料画 1 页概念图",
           "output": "1 页概念图",
           "rest": false,
           "gate": null
@@ -3338,6 +3338,14 @@ export const DATA = {
           "output": "周报 KPT",
           "rest": false,
           "gate": null
+        },
+        {
+          "d": 365,
+          "weekday": "周一",
+          "task": "毕业 Gate｜整理最终作品集：README、架构图、BOM、测试报告、3 分钟演示视频；做一次 30 分钟部署演练，记录失败点和下一版计划",
+          "output": "作品集 + 部署手册 + 演示视频",
+          "rest": false,
+          "gate": "最终 Gate（D365）：陌生人按 README 30 分钟内复现，断网/重启/存储满后可恢复。"
         }
       ]
     }

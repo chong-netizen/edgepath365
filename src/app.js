@@ -1,4 +1,4 @@
-import { DATA } from "./data.js";
+﻿import { DATA } from "./data.js";
 import { LABS, MACHINES } from "./labs.js";
 import { DEVICE_MODULES, CAPABILITIES, SIGNAL_STAGES, SCENES } from "./device.js";
 
@@ -225,7 +225,7 @@ function renderHome() {
         <div class="hero-copy">
           <div class="hero-kicker"><span class="line"></span><span class="eyebrow">EDGEPATH / 365</span></div>
           <h1>从零到<br><span class="mint">边缘智能</span><br><span class="outline">做一台设备</span></h1>
-          <p class="hero-sub">嵌入式 Linux × 机器视觉。不是两份课表拼在一起，而是一条从 C/C++、驱动、系统构建，到模型训练与边缘部署的完整路径。</p>
+          <p class="hero-sub">STM32 起步 × 嵌入式 Linux × 机器视觉。先用一块单片机把 C、外设和 RTOS 跑通，再进入驱动、系统构建、模型训练与边缘部署。</p>
           <div class="hero-cta">
             <a class="btn btn-primary" href="#/lesson/${nextWeek}">${p ? "继续学习" : "开始第 1 天"} ${arrow}</a>
             <a class="btn btn-ghost" href="#/lab">打开项目实验室</a>
@@ -234,7 +234,7 @@ function renderHome() {
             <div class="hero-stat"><strong>52</strong><span>WEEKS</span></div>
             <div class="hero-stat"><strong>365</strong><span>DAYS</span></div>
             <div class="hero-stat"><strong>8</strong><span>PROJECTS</span></div>
-            <div class="hero-stat"><strong>3</strong><span>GATES</span></div>
+            <div class="hero-stat"><strong>4</strong><span>GATES</span></div>
           </div>
         </div>
         <div class="hero-art">
@@ -331,13 +331,13 @@ function renderRoute() {
   }).join("");
 
   return `<div class="page wrap">
-    ${pageHead("ROADMAP / 52 WEEKS", "路线总览", "先打地基，再进入嵌入式 Linux，随后补机器视觉，最后把两条线合并到边缘设备。顺序不能反。", `${progressMarkup()}`)}
+    ${pageHead("ROADMAP / 52 WEEKS", "路线总览", "先用 4 周吃透一块 STM32，再进入 C/C++ 与嵌入式 Linux，随后补机器视觉，最后合并到边缘设备。顺序不能反。", `${progressMarkup()}`)}
     <div class="route-hero">
       <div class="panel">
-        <div class="eyebrow">LANGUAGE STRATEGY</div>
-        <h2>C++ 优先，<br>C 不缺席。</h2>
-        <p>先用 2 周掌握 C 的指针与内存，再用 3 周进入 C++/STL/RAII；Linux 系统编程仍用 C，驱动与内核阶段继续读 C。这样既不会在 C 语法里困太久，也不会在板端变成“只会调包”。</p>
-        <div class="kicker-row" style="margin-top:18px"><span class="tag mint">C++17</span><span class="tag">STL / RAII</span><span class="tag amber">Kernel C</span></div>
+        <div class="eyebrow">START WITH ONE MCU</div>
+        <h2>单片机优先，<br>C 打底。</h2>
+        <p>先用 4 周把 STM32 最小系统跑通：GPIO、UART、中断、定时器、ADC/I2C/SPI、FreeRTOS。C 是这段的主语言；之后再花 6 周补 C++/STL/RAII、Linux 系统编程和调试。先让代码在真实硬件上跑起来，再谈抽象和框架。</p>
+        <div class="kicker-row" style="margin-top:18px"><span class="tag mint">STM32</span><span class="tag">C + FreeRTOS</span><span class="tag amber">C++17</span></div>
       </div>
       <div class="route-stat-stack">
         <div class="panel route-stat"><strong>${countDone()}</strong><span>DAYS DONE</span></div>
@@ -347,7 +347,7 @@ function renderRoute() {
       </div>
     </div>
 
-    <div class="section-head"><div><div class="eyebrow">PHASE MAP</div><h2>六阶段进度</h2></div><span class="tag">3 个正式 Gate</span></div>
+    <div class="section-head"><div><div class="eyebrow">PHASE MAP</div><h2>七个阶段进度</h2></div><span class="tag">3 个正式 Gate</span></div>
     <div class="phase-board">${phaseRows}</div>
 
     <div class="section-head"><div><div class="eyebrow">WEEK BY WEEK</div><h2>52 周课程</h2></div><div class="legend"><span><i></i> 已完成</span><span><i class="dim"></i> 未开始</span></div></div>
@@ -358,15 +358,15 @@ function renderRoute() {
       <table class="language-table">
         <thead><tr><th>语言</th><th>用在哪</th><th>学到什么程度</th><th>阶段</th></tr></thead>
         <tbody>
-          <tr><td>C</td><td>内核、U-Boot、字符驱动、系统调用、V4L2</td><td>指针、结构体、内存布局、ABI、GDB；能读能写</td><td>P1 核心 + P2/P3</td></tr>
-          <tr><td>C++</td><td>OpenCV、TensorRT、ONNX Runtime、Qt、应用层</td><td>RAII、STL、智能指针、CMake、测试</td><td>P1 后半 + P5</td></tr>
-          <tr><td>Python</td><td>训练、数据处理、脚本、快速验证</td><td>能训练/评估/可视化，不依赖 Python 上板</td><td>P4</td></tr>
+          <tr><td>C</td><td>STM32 外设、内核、U-Boot、字符驱动、系统调用、V4L2</td><td>指针、结构体、内存布局、位运算、寄存器/中断、ABI、GDB；能读能写</td><td>P0 打底 + P1 核心 + P2/P3</td></tr>
+          <tr><td>C++</td><td>OpenCV、TensorRT、ONNX Runtime、Qt、应用层</td><td>RAII、STL、智能指针、CMake、测试</td><td>P1 + P5</td></tr>
+          <tr><td>Python</td><td>训练、数据处理、脚本、快速验证</td><td>能训练/评估/可视化，不依赖 Python 上板</td><td>P0 选修 + P4</td></tr>
           <tr><td>Shell</td><td>构建、部署、日志、远程运维</td><td>能写可复现脚本，不靠手敲命令</td><td>全程</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="split-callout"><div><h3>下一次 Gate：D70 · Gate 1</h3><p>C/C++ 工具、GDB/Valgrind、串口传感器、进程/线程。过不了就用 1–2 周 buffer 重做项目。</p></div><a class="btn btn-primary" href="#/lesson/${nextIncompleteWeek()}">继续第 ${nextIncompleteWeek()} 周 ${arrow}</a></div>
+    <div class="split-callout"><div><h3>下一道 Gate：D28 · Gate 0</h3><p>能独立 bring-up 一块 STM32：点灯、按键、串口、定时器、ADC/I2C、RTOS 三任务。过不了就用 1 周 buffer 重做最小节点。</p></div><a class="btn btn-primary" href="#/lesson/${nextIncompleteWeek()}">继续第 ${nextIncompleteWeek()} 周 ${arrow}</a></div>
   </div>`;
 }
 
@@ -677,23 +677,25 @@ function renderMachine() {
 
     <div class="section-head"><div><div class="eyebrow">EXPLODED VIEW</div><h2>一台设备的七个模块</h2></div><a class="link-arrow" href="#/lab/p8">进入 Capstone ${arrow}</a></div>
     <div class="exploded-block">
-      <div class="exploded-img"><img src="assets/exploded.png" alt="Edge Vision Box 拆解图"></div>
+      <div class="exploded-img"><img src="assets/device/exploded-clean.jpg" alt="Edge Vision Box 内部拆解图"></div>
       <div class="module-list">${modules}</div>
     </div>
 
     <div class="section-head"><div><div class="eyebrow">BUY IN STAGES</div><h2>采购路线：不要第一天买齐</h2></div></div>
     <div class="buy-grid">
-      <div class="buy-card"><div class="eyebrow">MINIMUM</div><h3>先开始</h3><p>Pi 4B/5 8GB、64GB TF、官方电源、USB 摄像头、USB-TTL、万用表。</p><strong>¥1,100–1,800</strong></div>
-      <div class="buy-card"><div class="eyebrow">RECOMMENDED</div><h3>做视觉</h3><p>Pi 5 + Camera Module + 散热壳 + 逻辑分析仪；驱动、V4L2、实时视觉更顺。</p><strong>¥1,800–2,800</strong></div>
-      <div class="buy-card"><div class="eyebrow">EDGE AI</div><h3>要算力时</h3><p>Jetson Orin Nano；TensorRT、NPU、Capstone。先确认你的模型真的需要它。</p><strong>¥3,000–4,500</strong></div>
+      <div class="buy-card"><div class="eyebrow">STAGE 0 / MCU</div><h3>先开始</h3><p>STM32F103C8T6 最小系统板、ST-Link V2、USB-TTL、面包板、LED/按键、BME280 或 MPU6050。</p><strong>¥100–250</strong></div>
+      <div class="buy-card"><div class="eyebrow">STAGE 2 / VISION</div><h3>做 Linux 视觉</h3><p>Pi 5 + Camera Module + 散热壳 + 逻辑分析仪；驱动、V4L2、实时视觉更顺。</p><strong>¥1,800–2,800</strong></div>
+      <div class="buy-card"><div class="eyebrow">STAGE 3 / EDGE AI</div><h3>要算力时</h3><p>Jetson Orin Nano；TensorRT、NPU、Capstone。先确认你的模型真的需要它。</p><strong>¥3,000–4,500</strong></div>
     </div>
-    <div class="split-callout"><div><h3>没有板子也能开始</h3><p>QEMU + 笔记本摄像头 + Colab 可以学完前 10 周；第 9 周再买板子。</p></div><a class="btn btn-ghost" href="#/lesson/1">从第 1 周开始 ${arrow}</a></div>
+    <div class="split-callout"><div><h3>STM32 不能靠 QEMU 替代</h3><p>第 1 周就买一块最小系统板，先把点灯、串口、中断跑通；Linux 板可以第 11 周再买。</p></div><a class="btn btn-ghost" href="#/lesson/1">从第 1 周开始 ${arrow}</a></div>
   </div>`;
 }
 
 /* ------------------------------- MANUAL ------------------------------- */
 function renderManual() {
   const resources = [
+    ["STM32CubeIDE / HAL", "STM32 工具链 / 外设", "https://www.st.com/en/development-tools/stm32cubeide.html"],
+    ["FreeRTOS", "任务 / 队列 / 信号量", "https://www.freertos.org/Documentation/RTOS_book.html"],
     ["MIT Missing Semester", "Shell / Git / 调试", "https://missing.csail.mit.edu/"],
     ["CS50", "计算机通识", "https://cs50.harvard.edu/x/"],
     ["cppreference", "C++ 语法 / STL", "https://en.cppreference.com/w/"],
@@ -712,9 +714,9 @@ function renderManual() {
     ${pageHead("FIELD MANUAL / READ THIS", "学习手册", "四件事决定你能不能走完：语言策略、每日节奏、阶段 Gate、资源克制。", `<div class="head-side"><strong>52</strong>WEEKS / 800 H</div>`)}
     <div class="manual-grid">
       <div class="panel manual-card">
-        <div class="eyebrow">01 / LANGUAGE</div><h2>C++ 优先，C 不缺席</h2>
-        <p>C 是内核、驱动、U-Boot 和系统调用的语言；C++ 是应用、视觉与推理工程的语言。不要用 C++ 写内核模块，也不要用 C 手写所有应用层抽象。</p>
-        <ul><li>C 核心 2 周：指针、内存、结构体、GDB</li><li>C++ 3 周：RAII、STL、智能指针、CMake</li><li>Linux 系统编程：仍然用 C</li><li>P2/P3 驱动：读 C、写 C、调 C</li></ul>
+        <div class="eyebrow">01 / LANGUAGE</div><h2>单片机优先，C 打底</h2>
+        <p>先用一块 STM32 把 GPIO、UART、中断、定时器、ADC/I2C/SPI、FreeRTOS 跑通；C 是这段的主语言。之后再用 C++ 做应用层、视觉和推理工程，Linux 内核/驱动继续用 C。</p>
+        <ul><li>STM32 4 周：工具链、GPIO、中断、定时器、ADC/I2C/SPI、RTOS</li><li>C/C++ 6 周：指针、内存、RAII、STL、CMake、GDB</li><li>Linux 系统编程：仍然用 C</li><li>P2/P3 驱动：读 C、写 C、调 C</li></ul>
       </div>
       <div class="panel manual-card">
         <div class="eyebrow">02 / DAILY LOOP</div><h2>每天 2 小时，怎么切</h2>
@@ -723,8 +725,9 @@ function renderManual() {
       </div>
     </div>
 
-    <div class="section-head"><div><div class="eyebrow">GATES</div><h2>三个 Gate，不是三次考试</h2></div><span class="tag">能力证据</span></div>
+    <div class="section-head"><div><div class="eyebrow">GATES</div><h2>一个 Gate 0，加三个正式 Gate</h2></div><span class="tag">能力证据</span></div>
     <div class="gate-grid">
+      <div class="gate-card"><div class="g-day">D28 / GATE 0</div><h3>STM32 最小系统</h3><p>从空工程完成点灯、按键、串口、定时器、ADC/I2C、RTOS 三任务；有接线图、BOM 和踩坑记录。</p></div>
       <div class="gate-card"><div class="g-day">D70 / GATE 1</div><h3>C/C++ + Linux + 硬件</h3><p>500 行 C/C++ 工具、GDB/Valgrind、串口传感器、进程/线程。过不了，用 1–2 周重做项目。</p></div>
       <div class="gate-card"><div class="g-day">D168 / GATE 2</div><h3>嵌入式系统集成</h3><p>从零构建镜像、V4L2 取流、RTSP 拉流、字符驱动 + DT、远程部署。能 30 分钟复现设备。</p></div>
       <div class="gate-card"><div class="g-day">D294 / GATE 3</div><h3>边缘部署</h3><p>摄像头→推理→事件端到端；延迟/内存表；8 小时稳定；部署手册。先稳定，再优化。</p></div>
@@ -733,8 +736,8 @@ function renderManual() {
     <div class="manual-grid" style="margin-top:12px">
       <div class="panel manual-card">
         <div class="eyebrow">03 / HARDWARE</div><h2>最低启动条件</h2>
-        <p>一台能装 Ubuntu 的电脑（16GB 内存最好）、一块 Pi 4B/5 或同级 Linux 板、一个摄像头、一根 USB-TTL、一个万用表。没有板子可以先用 QEMU + 摄像头 + Colab。</p>
-        <ul><li>第 1 周：USB-TTL + 万用表</li><li>第 9 周：板子 + 摄像头</li><li>第 35 周：按 Capstone 决定是否上 Jetson</li></ul>
+        <p>一台能装 STM32CubeIDE 的电脑、一块 STM32F103C8T6（或 G431）最小系统板、一个 ST-Link V2、USB-TTL、面包板、LED/按键、一个传感器模块。Linux 板可以到第 11 周再买。</p>
+        <ul><li>第 1 周：STM32 + ST-Link + USB-TTL + 面包板</li><li>第 3 周：BME280/MPU6050 + OLED + 逻辑分析仪（可选）</li><li>第 11 周：Linux 板 + 摄像头</li><li>第 35 周：按 Capstone 决定是否上 Jetson</li></ul>
       </div>
       <div class="panel manual-card">
         <div class="eyebrow">04 / RESOURCES</div><h2>少而准的资料</h2>
@@ -1292,4 +1295,5 @@ if ("serviceWorker" in navigator) {
     });
   }
 }
+
 
