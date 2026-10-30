@@ -2,7 +2,7 @@
 
 STM32 × 嵌入式 Linux × 机器视觉的 365 天学习站，配套文档：
 
-`../embedded-linux-vision-365/嵌入式Linux与机器视觉_365天零基础学习路线_C++优化版.docx`
+`../embedded-linux-vision-365/嵌入式Linux与机器视觉_365天零基础学习路线_MCU优化版.docx`
 
 ## 打开
 
@@ -76,6 +76,7 @@ docs/            # 页面截图（开发预览）
 - 没有构建步骤、没有 npm 依赖、没有 CDN。
 - 建议 Chrome / Edge；项目调参台是示意模型，真实指标需在目标板子上 benchmark。
 - 机器图片用于学习与项目叙事；设备外观为视觉素材，不代表真实产品型号。
+
 
 
 
