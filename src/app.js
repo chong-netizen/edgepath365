@@ -1,4 +1,4 @@
-﻿import { DATA } from "./data.js";
+import { DATA } from "./data.js";
 import { LABS, MACHINES } from "./labs.js";
 import { DEVICE_MODULES, CAPABILITIES, SIGNAL_STAGES, SCENES } from "./device.js";
 
@@ -325,7 +325,7 @@ function renderRoute() {
       <div class="phase-tick"></div>
       <div class="wk">W${pad(w.n)} / ${w.phase}</div>
       <h4>${w.title}</h4>
-      <p>${dayCode(w.days[0].d)}–${dayCode(w.days[6].d)} · ${weekDoneCount(w.n)}/7</p>
+      <p>${dayCode(w.days[0].d)}–${dayCode(w.days[w.days.length - 1].d)} · ${weekDoneCount(w.n)}/${w.days.length}</p>
       <div class="week-dots">${dots}</div>
     </a>`;
   }).join("");
@@ -376,8 +376,9 @@ function renderLesson(n) {
   if (!week) return `<div class="page wrap"><div class="empty">没有这一周。</div></div>`;
   const ph = PHASE[week.phase];
   const days = week.days;
+  const total = days.length;
   const done = days.filter((d) => dayDone(d.d)).length;
-  const pct = Math.round((done / 7) * 100);
+  const pct = Math.round((done / total) * 100);
   progress.lastLesson = n;
   save();
 
@@ -405,7 +406,7 @@ function renderLesson(n) {
       <h1>${week.title}</h1>
       <p class="muted" style="max-width:760px;margin:0">${ph.summary}</p>
       <div class="lesson-tags">
-        <span class="tag mint">${dayCode(days[0].d)}–${dayCode(days[6].d)}</span>
+        <span class="tag mint">${dayCode(days[0].d)}–${dayCode(days[total - 1].d)}</span>
         <span class="tag">2–3 h / 天</span>
         <span class="tag amber">${ph.days}</span>
         ${n >= 6 && n <= 8 ? `<span class="tag mint">C++ FIRST</span>` : ""}
@@ -414,7 +415,7 @@ function renderLesson(n) {
 
     <div class="lesson-layout">
       <div>
-        <div class="section-head" style="margin:0 0 12px"><div><div class="eyebrow">DAILY MISSIONS</div><h2 style="font-size:22px">本周 7 天</h2></div><span class="mono dim" style="font-size:9px">${done}/7 COMPLETE</span></div>
+        <div class="section-head" style="margin:0 0 12px"><div><div class="eyebrow">DAILY MISSIONS</div><h2 style="font-size:22px">本周 ${total} 天</h2></div><span class="mono dim" style="font-size:9px">${done}/${total} COMPLETE</span></div>
         <div class="day-list">${dayRows}</div>
         <div class="lesson-nav">
           <button class="btn btn-ghost" data-go="prev" ${n <= 1 ? "disabled" : ""}><span><small>PREVIOUS</small><strong>上一课</strong></span><span>${"←"}</span></button>
@@ -426,9 +427,9 @@ function renderLesson(n) {
         <div class="panel side-card">
           <h3>WEEK PROGRESS</h3>
           <div class="progress-ring" id="weekRing" style="--p:${pct}"><div><strong id="weekRingValue">${pct}%</strong><span>THIS WEEK</span></div></div>
-          <div class="side-progress-label" id="weekDoneLabel">${done} / 7 DAYS</div>
+          <div class="side-progress-label" id="weekDoneLabel">${done} / ${total} DAYS</div>
           <div class="rule"></div>
-          <button class="btn btn-ghost" style="width:100%" data-complete-week="${n}" id="completeWeekBtn">${done === 7 ? "本周已完成" : "标记本周完成"}</button>
+          <button class="btn btn-ghost" style="width:100%" data-complete-week="${n}" id="completeWeekBtn">${done === total ? "本周已完成" : "标记本周完成"}</button>
         </div>
 
         <div class="panel side-card">
@@ -981,17 +982,18 @@ function updateWeekUI(n) {
   const week = WEEK[n];
   if (!week) return;
   const done = week.days.filter((d) => dayDone(d.d)).length;
-  const pct = Math.round((done / 7) * 100);
+  const total = week.days.length;
+  const pct = Math.round((done / total) * 100);
   const ring = $("#weekRing");
   if (ring) ring.style.setProperty("--p", pct);
   const val = $("#weekRingValue");
   if (val) val.textContent = `${pct}%`;
   const label = $("#weekDoneLabel");
-  if (label) label.textContent = `${done} / 7 DAYS`;
+  if (label) label.textContent = `${done} / ${total} DAYS`;
   const btn = $("#completeWeekBtn");
   if (btn) {
-    btn.textContent = done === 7 ? "本周已完成" : "标记本周完成";
-    btn.disabled = done === 7;
+    btn.textContent = done === total ? "本周已完成" : "标记本周完成";
+    btn.disabled = done === total;
   }
   week.days.forEach((d) => {
     const row = $(`[data-day-row="${d.d}"]`);
@@ -1009,7 +1011,7 @@ function toggleDay(n) {
   save();
   updateWeekUI(parseRoute().n);
   const w = parseRoute().n;
-  if (w && weekDone(w)) toast(`W${pad(w)} 完成：本周 7 天全部打勾。`);
+  if (w && weekDone(w)) toast(`W${pad(w)} 完成：本周 ${WEEK[w].days.length} 天全部打勾。`);
 }
 
 function completeWeek(n) {
