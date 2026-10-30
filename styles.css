@@ -1,4 +1,4 @@
-/* EDGEPATH 365 — embedded Linux × machine vision learning OS */
+﻿/* EDGEPATH 365 — embedded Linux × machine vision learning OS */
 :root{
   --bg:#07100e;
   --bg-2:#0a1512;
@@ -449,7 +449,7 @@ img{display:block;max-width:100%}
 .manual-card ul{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
 .manual-card li{font-size:10.5px;color:var(--muted);display:flex;gap:8px;line-height:1.55}
 .manual-card li::before{content:"→";color:var(--mint);font-family:var(--mono);flex:0 0 auto}
-.gate-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.gate-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .gate-card{padding:20px;border:1px solid var(--line);border-radius:14px;background:rgba(13,26,23,.5);position:relative;overflow:hidden}
 .gate-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--amber)}
 .gate-card .g-day{font-family:var(--mono);font-size:9px;color:var(--amber)}
@@ -822,3 +822,4 @@ img{display:block;max-width:100%}
 /* keep P8 exploded image and hotspots in the same 4:3 frame */
 .lab-stage.wide.contain{aspect-ratio:4/3;height:auto;min-height:0}
 .lab-stage.wide.contain img{height:100%;object-fit:contain}
+
