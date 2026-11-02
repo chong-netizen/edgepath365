@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F9F6F0">
+  <title>网课数理翻译器 · 把公式翻译成直觉</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+/* ==========================================================================
+   网课数理翻译器 — bright macaron, large type, native canvas
+   Palette: paper #F9F6F0 / blue #A0C4FF / yellow #FDFFB6 / pink #FFADAD
+   ========================================================================== */
+
+:root{
+  --bg:#F9F6F0;
+  --paper:#FFFDF8;
+  --ink:#27323A;
+  --ink-2:#3B4A55;
+  --muted:#6E7B84;
+  --faint:#9AA5AC;
+  --blue:#A0C4FF;
+  --blue-deep:#4C7FC4;
+  --yellow:#FDFFB6;
+  --yellow-deep:#B49A24;
+  --pink:#FFADAD;
+  --pink-deep:#C75B5B;
+  --mint:#C8F4D8;
+  --line:rgba(39,50,58,.13);
+  --line-strong:rgba(39,50,58,.22);
+  --shadow:0 18px 50px rgba(66,56,38,.1),0 2px 6px rgba(66,56,38,.05);
+  --radius:22px;
+  --sans:"Bahnschrift","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Bahnschrift Condensed","Bahnschrift","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --mono:"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  --max:1560px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:17px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{text-decoration:none;color:inherit}
+h1,h2,h3,h4,p{margin:0}
+sup,sub{font-size:.65em}
+::selection{background:var(--yellow);color:var(--ink)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#F1ECE2}
+::-webkit-scrollbar-thumb{background:#C9D5E4;border-radius:10px;border:2px solid #F1ECE2}
+::-webkit-scrollbar-thumb:hover{background:#A0C4FF}
+
+/* paper atmosphere */
+.paper-grain{
+  position:fixed;inset:0;z-index:-3;pointer-events:none;opacity:.55;
+  background-image:radial-gradient(rgba(39,50,58,.13) .55px,transparent .55px);
+  background-size:19px 19px;
+  mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 55%,transparent 100%);
+}
+.color-orb{position:fixed;z-index:-2;border-radius:50%;filter:blur(2px);opacity:.5;pointer-events:none}
+.orb-a{width:460px;height:460px;left:-180px;top:90px;background:radial-gradient(circle,rgba(160,196,255,.55),transparent 68%)}
+.orb-b{width:520px;height:520px;right:-220px;top:420px;background:radial-gradient(circle,rgba(255,173,173,.42),transparent 70%)}
+.orb-c{width:420px;height:420px;left:38%;bottom:-240px;background:radial-gradient(circle,rgba(253,255,182,.75),transparent 68%)}
+
+/* topbar */
+.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:26px;
+  padding:10px max(26px,calc((100vw - var(--max))/2));
+  min-height:78px;background:rgba(249,246,240,.88);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.brand-mark{
+  width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(145deg,var(--yellow),#FFF9C9);
+  border:1.5px solid var(--line-strong);font-family:var(--mono);font-size:24px;
+  box-shadow:0 4px 0 rgba(39,50,58,.12);
+}
+.brand-copy strong{display:block;font-family:var(--display);font-size:23px;letter-spacing:.02em;line-height:1}
+.brand-copy small{display:block;margin-top:4px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--muted)}
+.page-tabs{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,248,.66);overflow:auto;scrollbar-width:none}
+.page-tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;font-size:15px;color:var(--muted);white-space:nowrap;transition:.2s}
+.tab span{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.tab:hover{color:var(--ink);background:rgba(160,196,255,.18)}
+.tab.active{color:var(--ink);background:var(--blue);box-shadow:0 3px 0 rgba(39,50,58,.13)}
+.tab.active span{color:var(--ink)}
+.top-note{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.top-note b{color:var(--ink);font-weight:500}
+.top-note i{font-style:normal;color:var(--faint);border-left:1px solid var(--line);padding-left:8px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 4px rgba(255,173,173,.28);animation:live 2s infinite}
+@keyframes live{0%,100%{transform:scale(.86);opacity:.7}50%{transform:scale(1.12);opacity:1}}
+
+/* map ribbon */
+.map-ribbon{
+  position:sticky;top:78px;z-index:45;
+  display:flex;align-items:center;gap:20px;padding:9px max(26px,calc((100vw - var(--max))/2));
+  background:rgba(255,253,248,.88);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+}
+.ribbon-label{flex:0 0 132px}
+.ribbon-label span{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.11em;color:var(--blue-deep)}
+.ribbon-label b{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-top:2px}
+.ribbon-track{display:flex;align-items:center;gap:0;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.ribbon-track::-webkit-scrollbar{display:none}
+.ribbon-node{position:relative;display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:9px;color:var(--muted);transition:.25s;white-space:nowrap}
+.ribbon-node .n{font-family:var(--mono);font-size:9px;width:20px;height:20px;border:1px solid var(--line-strong);border-radius:50%;display:grid;place-items:center;background:var(--paper)}
+.ribbon-node b{font-size:12px;font-weight:500}
+.ribbon-node small{font-family:var(--mono);font-size:9px;color:var(--faint)}
+.ribbon-node:hover{color:var(--ink);background:rgba(160,196,255,.2)}
+.ribbon-node.active{color:var(--ink);background:rgba(160,196,255,.35);box-shadow:inset 0 0 0 1px rgba(76,127,196,.22)}
+.ribbon-node.active .n{background:var(--blue);border-color:var(--blue-deep);color:var(--ink)}
+.ribbon-node.glow{animation:nodeGlow 1.1s ease both}
+@keyframes nodeGlow{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-2px) scale(1.06);box-shadow:0 6px 18px rgba(160,196,255,.5)}100%{transform:none}}
+.ribbon-arrow{font-family:var(--mono);font-size:12px;color:var(--faint);padding:0 2px;flex:0 0 auto}
+.ribbon-link{flex:0 0 auto;padding:7px 11px;border:1px solid var(--line-strong);border-radius:9px;font-size:12px;color:var(--ink-2);background:var(--paper);transition:.2s}
+.ribbon-link:hover{background:var(--yellow)}
+
+/* pages */
+.pages{max-width:var(--max);margin:0 auto;padding:44px 26px 30px}
+.page{display:none}
+.page.active{display:block;animation:pageIn .45s cubic-bezier(.2,.75,.25,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.page-head{max-width:1180px;margin-bottom:30px}
+.page-eyebrow{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;letter-spacing:.13em;color:var(--blue-deep)}
+.page-eyebrow i{font-style:normal;color:var(--muted);border-left:1px solid var(--line-strong);padding-left:12px;letter-spacing:.04em}
+.page-head h1{margin:15px 0 16px;font-family:var(--display);font-size:clamp(44px,5.6vw,82px);line-height:.98;letter-spacing:-.035em;font-weight:700}
+.page-head h1 em{font-style:normal;color:var(--blue-deep);position:relative;white-space:nowrap}
+.page-head h1 em::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:12px;background:var(--yellow);z-index:-1;border-radius:3px;transform:rotate(-.6deg)}
+.page-head p{max-width:920px;font-size:19px;line-height:1.7;color:var(--ink-2)}
+.head-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;line-height:1}
+.pill.blue{background:var(--blue)}
+.pill.yellow{background:var(--yellow)}
+.pill.pink{background:var(--pink)}
+.pill.outline{background:var(--paper);font-family:var(--mono);font-size:12px}
+
+/* generic layout */
+.lab-grid{display:grid;grid-template-columns:minmax(0,1.42fr) minmax(0,.58fr);gap:24px;align-items:start}
+.side-stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.canvas-card,.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.canvas-card{overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.canvas-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.canvas-top span:last-child{color:var(--blue-deep)}
+.canvas-wrap{position:relative;height:clamp(440px,58vh,650px);background:#FFFCF5;overflow:hidden}
+.canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none}
+.canvas-legend{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:11px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.canvas-legend span{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(39,50,58,.14)}
+.dot.blue{background:var(--blue)}
+.dot.pink{background:var(--pink)}
+.dot.yellow{background:var(--yellow)}
+.line{width:18px;height:4px;border-radius:2px;display:inline-block}
+.line.yellow{background:var(--yellow)}
+.legend-hint{margin-left:auto;color:var(--faint)}
+.card{padding:20px}
+.card-kicker{font-family:var(--mono);font-size:9px;letter-spacing:.13em;color:var(--blue-deep)}
+.card h2{font-family:var(--display);font-size:25px;line-height:1.1;letter-spacing:-.02em;margin-top:4px}
+.card h3{font-family:var(--display);font-size:25px;line-height:1.1;letter-spacing:-.02em;margin-top:4px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.text-btn{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:5px 8px;transition:.2s;white-space:nowrap}
+.text-btn:hover{background:var(--yellow);color:var(--ink)}
+.formula-card{border-left:5px solid var(--yellow);background:linear-gradient(180deg,#FFFEF7,#FFFDF3)}
+.formula-note{margin-top:12px;font-size:13.5px;line-height:1.65;color:var(--muted)}
+.math{overflow-x:auto;overflow-y:hidden;padding:8px 2px}
+.math.big{font-size:22px}
+.math.small{font-size:16px;color:var(--ink-2)}
+.math .katex-display{margin:.35em 0}
+.math .katex{color:var(--ink)}
+.math .katex .mord.text{color:var(--ink)}
+.blue-tint{background:linear-gradient(180deg,#EFF5FF,#EAF2FF)}
+.yellow-tint{background:linear-gradient(180deg,#FFFDEB,#FFFBDD)}
+.pink-tint{background:linear-gradient(180deg,#FFF0F0,#FFE9E9)}
+.insight-card{padding:22px}
+.insight-card p{font-size:14.5px;line-height:1.7;color:var(--ink-2);margin-top:8px}
+
+/* matrix controls */
+.matrix-editor{display:flex;align-items:stretch;gap:8px;margin:14px 0}
+.matrix-bracket{width:12px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);flex:0 0 12px}
+.matrix-bracket.left{border-left:2px solid var(--ink);border-radius:4px 0 0 4px}
+.matrix-bracket.right{border-right:2px solid var(--ink);border-radius:0 4px 4px 0}
+.matrix-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1}
+.cell{display:flex;flex-direction:column;gap:3px;padding:8px 9px;border-radius:10px;background:var(--yellow);border:1px solid rgba(180,154,36,.18)}
+.cell span{font-family:var(--mono);font-size:9px;color:#816D19}
+.cell b{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink);text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;background:#E6E0D3;border-radius:4px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--blue);border:2px solid #FFFDF8;box-shadow:0 1px 0 rgba(39,50,58,.35);cursor:grab}
+input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:var(--blue);border:2px solid #FFFDF8;box-shadow:0 1px 0 rgba(39,50,58,.35);cursor:grab}
+.cell input{height:4px;background:#E4D889}
+.preset-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.preset-row button{padding:8px 7px;border:1px solid var(--line);border-radius:9px;font-size:11px;color:var(--ink-2);background:#FFFEF7;transition:.2s}
+.preset-row button:hover{background:var(--yellow)}
+.preset-row button.accent{background:var(--pink);border-color:rgba(199,91,91,.25)}
+.metric-box{margin-top:15px;padding:12px 14px;border-radius:12px;background:#F7F2E9;border:1px solid var(--line)}
+.metric-head{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.metric-head b{font-size:13px;color:var(--ink)}
+.metric-bar{height:8px;border-radius:4px;background:#E6DED0;overflow:hidden;margin:8px 0 7px}
+.metric-bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--pink));transition:width .25s}
+.metric-box p{font-size:12px;color:var(--muted);margin:0}
+
+/* calculus */
+.lr-scale{display:flex;justify-content:space-between;gap:8px;margin:6px 0 16px;font-family:var(--mono);font-size:9px;color:var(--faint)}
+.big-number{font-family:var(--mono);font-size:20px;color:var(--blue-deep)}
+.big-slider{height:7px;background:linear-gradient(90deg,var(--blue),var(--yellow),var(--pink))}
+.big-slider::-webkit-slider-thumb{width:23px;height:23px}
+.button-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.button-row button{padding:10px 14px;border:1px solid var(--line-strong);border-radius:11px;font-size:13px;background:var(--paper);transition:.2s}
+.button-row button:hover{background:var(--yellow)}
+.button-row .primary{background:var(--blue);border-color:rgba(76,127,196,.35);font-weight:600}
+.button-row .primary:hover{background:#8DB8FF}
+.hint-line{margin-top:11px;font-size:12px;line-height:1.55;color:var(--muted);padding:8px 10px;border-radius:8px;background:#F7F2E9}
+.live-numbers{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.live-numbers div{padding:7px 9px;border-radius:8px;background:#F7F2E9;font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.live-numbers b{color:var(--ink);font-weight:500}
+
+/* network */
+.network-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.6fr);gap:24px;align-items:start}
+.canvas-wrap.network{height:clamp(520px,64vh,700px)}
+.control-card.compact .card-head{margin-bottom:10px}
+.slider-label{display:grid;grid-template-columns:42px 1fr 50px;align-items:center;gap:9px;margin:9px 0;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.slider-label b{text-align:right;color:var(--ink);font-weight:500}
+.slider-label input{background:#E6E0D3}
+.seg-row{display:flex;gap:5px;padding:4px;border-radius:10px;background:#F2ECE0;margin-top:14px}
+.seg{flex:1;padding:8px;border-radius:7px;font-size:12px;color:var(--muted);transition:.2s}
+.seg.active{background:var(--pink);color:var(--ink);box-shadow:0 2px 0 rgba(39,50,58,.1)}
+.chart-card{padding-bottom:16px}
+.chart-wrap{height:260px;margin-top:4px}
+.chart-wrap canvas{width:100%;height:100%;display:block}
+.explain-card p,.quiz-card p{font-size:14px;line-height:1.65;color:var(--ink-2);margin-top:8px}
+.network-lower{display:grid;grid-template-columns:1fr 1.15fr;gap:18px;margin-top:22px}
+.quiz-card{padding:22px}
+.quiz-sub{color:var(--muted)!important;font-size:13px!important}
+.quiz-options{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.quiz-options button{text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:#FFFEF7;transition:.2s}
+.quiz-options button:hover{background:var(--yellow)}
+.quiz-options button.correct{background:var(--mint);border-color:rgba(70,150,100,.25)}
+.quiz-options button.wrong{background:var(--pink);border-color:rgba(199,91,91,.3);animation:shake .35s}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.quiz-feedback{margin-top:9px;font-size:12px;line-height:1.55;color:var(--muted);min-height:18px}
+
+/* map page */
+.map-board{padding:22px 26px;overflow:hidden}
+.map-board-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}
+.map-board-head h2{font-size:28px}
+.map-svg-wrap{width:100%;background:linear-gradient(180deg,#FFFEF7,#FBF6EA);border:1px dashed var(--line-strong);border-radius:16px;overflow:hidden}
+#bigMap{display:block;width:100%;height:auto}
+.map-note{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.map-note span{color:var(--blue-deep)}
+.map-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.mini-map-card{padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:var(--shadow)}
+.mini-map-card span{font-family:var(--mono);font-size:10px;color:var(--blue-deep)}
+.mini-map-card h3{font-family:var(--display);font-size:25px;margin:4px 0 6px}
+.mini-map-card p{font-size:12.5px;line-height:1.65;color:var(--ink-2)}
+
+/* bottom */
+.bottom-strip{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:22px;padding:16px 20px;border:1px dashed var(--line-strong);border-radius:16px;background:rgba(255,253,248,.65)}
+.bottom-strip div{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.bottom-strip b{font-family:var(--mono);font-size:10px;color:var(--ink);font-weight:500}
+.bottom-strip span{color:var(--muted)}
+.bottom-strip div:last-child{margin-left:auto}
+.next-link{font-size:12px;color:var(--blue-deep);border-bottom:1px solid rgba(76,127,196,.35);padding-bottom:1px;transition:.2s}
+.next-link:hover{color:var(--ink);border-color:var(--ink)}
+.site-footer{max-width:var(--max);margin:0 auto;padding:20px 26px 30px;display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:10px;color:var(--faint);border-top:1px solid var(--line)}
+
+/* toast */
+.toast{position:fixed;right:26px;bottom:26px;z-index:100;padding:11px 15px;border-radius:12px;background:var(--ink);color:#FFFDF8;font-size:13px;box-shadow:0 12px 30px rgba(39,50,58,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;max-width:min(420px,80vw)}
+.toast.show{opacity:1;transform:none}
+
+/* dashboard map SVG */
+.map-link{fill:none;stroke:#C8D2D9;stroke-width:2;stroke-dasharray:6 7}
+.map-link.active{stroke:var(--blue-deep);stroke-width:3;stroke-dasharray:10 4}
+.map-node{cursor:pointer}
+.map-node .node-bg{fill:#FFFDF8;stroke:#B7C3CB;stroke-width:2;transition:.2s}
+.map-node .node-num{font-family:var(--mono);font-size:11px;fill:var(--muted);text-anchor:middle}
+.map-node .node-title{font-family:var(--sans);font-size:16px;font-weight:700;fill:var(--ink);text-anchor:middle}
+.map-node .node-sub{font-family:var(--mono);font-size:10px;fill:var(--muted);text-anchor:middle}
+.map-node:hover .node-bg{fill:var(--yellow);stroke:var(--ink)}
+.map-node.active .node-bg{fill:var(--blue);stroke:var(--blue-deep);stroke-width:3}
+.map-node.active .node-title{fill:var(--ink)}
+.map-pulse{fill:var(--pink);stroke:#FFFDF8;stroke-width:2}
+
+/* responsive */
+@media(max-width:1240px){
+  .lab-grid{grid-template-columns:minmax(0,1.2fr) minmax(350px,.8fr)}
+  .network-grid{grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr)}
+  .page-head h1{font-size:clamp(40px,5.8vw,68px)}
+}
+@media(max-width:1050px){
+  .topbar{flex-wrap:wrap;gap:10px;padding:10px 20px}
+  .page-tabs{order:3;width:100%;justify-content:flex-start}
+  .top-note{display:none}
+  .map-ribbon{top:auto;position:relative;padding:10px 20px;gap:12px}
+  .ribbon-label{display:none}
+  .lab-grid,.network-grid{grid-template-columns:1fr}
+  .side-stack{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+  .side-stack .formula-card{grid-column:1/-1}
+  .network-lower{grid-template-columns:1fr}
+  .map-cards{grid-template-columns:1fr 1fr}
+  .canvas-wrap{height:480px}
+  .canvas-wrap.network{height:560px}
+}
+@media(max-width:720px){
+  body{font-size:16px}
+  .topbar{min-height:64px;padding:9px 14px}
+  .brand-mark{width:38px;height:38px;font-size:20px}
+  .brand-copy strong{font-size:19px}
+  .brand-copy small{display:none}
+  .page-tabs{display:flex;overflow-x:auto}
+  .tab{padding:8px 10px;font-size:13px}
+  .pages{padding:24px 14px 20px}
+  .page-head h1{font-size:clamp(36px,10vw,48px);line-height:1.02}
+  .page-head h1 em{white-space:normal}
+  .page-head p{font-size:16px}
+  .head-tags{gap:5px}
+  .pill{font-size:11px;padding:5px 9px}
+  .lab-grid,.network-grid,.side-stack{grid-template-columns:1fr}
+  .side-stack .formula-card{grid-column:auto}
+  .canvas-wrap{height:390px}
+  .canvas-wrap.network{height:460px}
+  .canvas-legend{gap:10px;font-size:10px}
+  .legend-hint{display:none}
+  .card{padding:16px}
+  .card h2{font-size:22px}
+  .math.big{font-size:18px}
+  .matrix-grid{gap:5px}
+  .preset-row{grid-template-columns:1fr 1fr}
+  .button-row button{flex:1}
+  .network-lower,.map-cards{grid-template-columns:1fr}
+  .bottom-strip{gap:10px}
+  .bottom-strip div:last-child{margin-left:0}
+  .map-board{padding:16px}
+  .map-board-head{display:block}
+  .map-note{display:block;line-height:1.7}
+  .site-footer{display:block;line-height:1.8}
+  .toast{right:14px;left:14px;bottom:14px;max-width:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+/* keep live matrix formula inside its card */
+.formula-card .math.big{font-size:16px}
+.formula-card .math.big .katex-display{margin:.2em 0}
+
+.formula-card{padding-left:17px;padding-right:17px}
+.formula-card .math{max-width:100%}
+
+/* hard containment: KaTeX must not expand the right column */
+.lab-grid > .side-stack,.network-grid > .side-stack{min-width:0;max-width:100%}
+.formula-card{min-width:0;overflow:hidden}
+.formula-card .math{min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden}
+.formula-card .katex-display{max-width:100%;overflow-x:auto;overflow-y:hidden}
+.formula-card .katex{font-size:1em}
+
+.lab-grid > .side-stack,.network-grid > .side-stack{width:100%;overflow:hidden}
+.side-stack > *{min-width:0}
+.formula-card{width:100%;max-width:100%}
+.formula-card .math,.formula-card .katex-display{width:100%;max-width:100%}
+
+</style>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+</head>
+<body>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <div class="color-orb orb-a" aria-hidden="true"></div>
+  <div class="color-orb orb-b" aria-hidden="true"></div>
+  <div class="color-orb orb-c" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#" data-page="linear">
+      <span class="brand-mark">∇</span>
+      <span class="brand-copy"><strong>数理翻译器</strong><small>COURSE → INTUITION</small></span>
+    </a>
+    <nav class="page-tabs" aria-label="四大框架">
+      <button class="tab active" data-page="linear"><span>01</span>线性代数</button>
+      <button class="tab" data-page="calculus"><span>02</span>微积分</button>
+      <button class="tab" data-page="network"><span>03</span>神经网络</button>
+      <button class="tab" data-page="map"><span>04</span>学科地图</button>
+    </nav>
+    <div class="top-note"><span class="live-dot"></span><b>60 FPS</b><i>拖动 · 观察 · 建立直觉</i></div>
+  </header>
+
+  <section class="map-ribbon" aria-label="全局学科地图">
+    <div class="ribbon-label"><span>FRAMEWORK MAP</span><b>你现在在哪里？</b></div>
+    <div class="ribbon-track" id="ribbonTrack"></div>
+    <button class="ribbon-link" data-page="map">打开全局地图 →</button>
+  </section>
+
+  <main class="pages">
+    <!-- ================= PAGE 1 / LINEAR ALGEBRA ================= -->
+    <section class="page active" id="page-linear">
+      <div class="page-head">
+        <div class="page-eyebrow"><span>01 / LINEAR ALGEBRA</span><i>第 52–54 集</i></div>
+        <h1>矩阵乘法，<br><em>不是乘法，是空间折叠。</em></h1>
+        <p>左边是一片特征空间。拖动右侧 2×2 权重矩阵，看网格如何被拉伸、旋转、剪切——以及两类点如何被重新排列。</p>
+        <div class="head-tags"><span class="pill blue">输入 A</span><span class="pill yellow">权重 W</span><span class="pill pink">输出 Z</span><span class="pill outline">Z = W · A</span></div>
+      </div>
+
+      <div class="lab-grid linear-grid">
+        <div class="canvas-card">
+          <div class="canvas-top"><span>FEATURE SPACE / 2D</span><span id="matrixMetricTop">可分度 0.00</span></div>
+          <div class="canvas-wrap tall"><canvas id="matrixCanvas" aria-label="矩阵变换可视化"></canvas></div>
+          <div class="canvas-legend">
+            <span><i class="dot blue"></i>类别 A</span>
+            <span><i class="dot pink"></i>类别 B</span>
+            <span><i class="line yellow"></i>网格 = 被 W 变换后的空间</span>
+            <span class="legend-hint">点击任意点查看它的 A → Z</span>
+          </div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="card formula-card">
+            <div class="card-kicker">LIVE FORMULA</div>
+            <div class="math big" id="matrixFormula"></div>
+            <p class="formula-note">同一个 W 作用在所有点上：<b>Z = W·A</b>。矩阵不是数字表格，而是“把整个坐标空间搬到哪里”的规则。</p>
+          </div>
+
+          <div class="card control-card">
+            <div class="card-head"><div><div class="card-kicker">WEIGHT MATRIX</div><h2>W 的四个自由度</h2></div><button class="text-btn" id="matrixReset">重置 W</button></div>
+            <div class="matrix-editor" id="matrixEditor">
+              <div class="matrix-bracket left"></div>
+              <div class="matrix-grid">
+                <label class="cell yellow"><span>w₁₁</span><input type="range" min="-2" max="2" step="0.05" value="1" data-w="w11"><b data-v="w11">1.00</b></label>
+                <label class="cell yellow"><span>w₁₂</span><input type="range" min="-2" max="2" step="0.05" value="0" data-w="w12"><b data-v="w12">0.00</b></label>
+                <label class="cell yellow"><span>w₂₁</span><input type="range" min="-2" max="2" step="0.05" value="0" data-w="w21"><b data-v="w21">0.00</b></label>
+                <label class="cell yellow"><span>w₂₂</span><input type="range" min="-2" max="2" step="0.05" value="1" data-w="w22"><b data-v="w22">1.00</b></label>
+              </div>
+              <div class="matrix-bracket right"></div>
+            </div>
+            <div class="preset-row">
+              <button data-matrix="identity">恒等</button>
+              <button data-matrix="rotate">旋转 45°</button>
+              <button data-matrix="shear">剪切</button>
+              <button data-matrix="separate" class="accent">拉开两类</button>
+            </div>
+            <div class="metric-box"><div class="metric-head"><span>类间距离 / 类内散度</span><b id="matrixMetric">0.00</b></div><div class="metric-bar"><span id="matrixMetricBar"></span></div><p id="matrixVerdict">拖动 W，观察两类点是否被拉开。</p></div>
+          </div>
+
+          <div class="card insight-card blue-tint">
+            <div class="card-kicker">INTUITION</div>
+            <h3>线性层只做“换坐标系”</h3>
+            <p>W 能旋转、拉伸、剪切，但它把直线仍然映成直线。若数据本来就线性可分，W 只是把它转到更舒服的方向；真正把弯曲边界掰开，要靠下一页的激活函数。</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="bottom-strip">
+        <div><b>这一页的公式</b><span>Z = W A</span></div>
+        <div><b>你要观察</b><span>网格的“折叠”，不是单个数字</span></div>
+        <div><b>下一步</b><button class="next-link" data-page="calculus">看梯度如何改 W →</button></div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 2 / CALCULUS ================= -->
+    <section class="page" id="page-calculus">
+      <div class="page-head">
+        <div class="page-eyebrow"><span>02 / CALCULUS</span><i>PyTorch 实战 · 课时 6</i></div>
+        <h1>梯度下降，<br><em>在 Loss 山脉上滚一颗球。</em></h1>
+        <p>Loss 是一个地形。导数告诉你“往哪个方向下坡最快”，学习率决定你每一步迈多大。点一步，看小球沿着负梯度移动。</p>
+        <div class="head-tags"><span class="pill blue">∂L/∂w</span><span class="pill yellow">学习率 η</span><span class="pill pink">Loss</span><span class="pill outline">w ← w − η∇L</span></div>
+      </div>
+
+      <div class="lab-grid calc-grid">
+        <div class="canvas-card">
+          <div class="canvas-top"><span>LOSS LANDSCAPE / 3D VIEW</span><span id="calcStatus">球在山上</span></div>
+          <div class="canvas-wrap tall"><canvas id="lossCanvas" aria-label="Loss 地形与梯度下降"></canvas></div>
+          <div class="canvas-legend"><span><i class="dot blue"></i>低 Loss</span><span><i class="dot yellow"></i>中 Loss</span><span><i class="dot pink"></i>高 Loss</span><span class="legend-hint">拖动画布旋转视角 · 滚轮缩放</span></div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="card formula-card">
+            <div class="card-kicker">UPDATE RULE</div>
+            <div class="math big" id="calcFormula"></div>
+            <div class="math small" id="calcChain"></div>
+            <div class="live-numbers" id="calcNumbers"></div>
+          </div>
+
+          <div class="card control-card">
+            <div class="card-head"><div><div class="card-kicker">OPTIMIZER</div><h2>学习率 η</h2></div><span class="big-number" id="lrValue">0.180</span></div>
+            <input type="range" id="lrSlider" class="big-slider" min="0.001" max="1.4" step="0.001" value="0.18">
+            <div class="lr-scale"><span>太小 · 挪不动</span><span>刚刚好</span><span>太大 · 飞出去</span></div>
+            <div class="button-row">
+              <button class="primary" id="gradStep">执行一步梯度下降</button>
+              <button id="gradAuto">自动下降</button>
+              <button id="gradReset">回到山上</button>
+            </div>
+            <div class="hint-line" id="lrHint">先试 0.18：看小球是否稳定向下。</div>
+          </div>
+
+          <div class="card insight-card yellow-tint">
+            <div class="card-kicker">WHY IT WORKS</div>
+            <h3>导数 = 最陡上坡方向</h3>
+            <p>梯度指向 Loss 上升最快的方向，所以我们要减去它。学习率太大，一步跨过山谷，甚至越滚越高；太小，收敛慢得像静止。</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="bottom-strip">
+        <div><b>这一页的公式</b><span>w ← w − η · ∂L/∂w</span></div>
+        <div><b>你要观察</b><span>球的方向、步长、是否爆炸</span></div>
+        <div><b>下一步</b><button class="next-link" data-page="network">看非线性如何把空间掰弯 →</button></div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 3 / NETWORK ================= -->
+    <section class="page" id="page-network">
+      <div class="page-head">
+        <div class="page-eyebrow"><span>03 / GRAPH &amp; NON-LINEARITY</span><i>第 43–49 集</i></div>
+        <h1>神经元网络，<br><em>一条会“掰弯空间”的流水线。</em></h1>
+        <p>输入像水一样流过权重、加偏置、再经过激活函数。拖动两个输入，观察粒子、节点数值和右侧激活曲线同步变化。</p>
+        <div class="head-tags"><span class="pill blue">a⁰ 输入</span><span class="pill yellow">W, b 线性</span><span class="pill pink">g(z) 非线性</span><span class="pill outline">2 → 3 → 1</span></div>
+      </div>
+
+      <div class="network-grid">
+        <div class="canvas-card">
+          <div class="canvas-top"><span>FORWARD PASS / 2-3-1</span><span id="netStatus">g = Sigmoid</span></div>
+          <div class="canvas-wrap network"><canvas id="networkCanvas" aria-label="神经网络前向传播"></canvas></div>
+          <div class="canvas-legend"><span><i class="dot pink"></i>负权重 / 抑制</span><span><i class="dot blue"></i>正权重 / 激活</span><span class="legend-hint">粒子 = 数据流</span></div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="card control-card compact">
+            <div class="card-head"><div><div class="card-kicker">INPUT</div><h2>两个输入</h2></div><span class="big-number" id="netOut">ŷ = 0.00</span></div>
+            <label class="slider-label"><span>a₁⁰</span><input id="in1" type="range" min="-2" max="2" step="0.05" value="0.8"><b id="in1v">0.80</b></label>
+            <label class="slider-label"><span>a₂⁰</span><input id="in2" type="range" min="-2" max="2" step="0.05" value="-0.5"><b id="in2v">-0.50</b></label>
+            <div class="seg-row" role="group" aria-label="激活函数">
+              <button class="seg active" data-act="sigmoid">Sigmoid</button>
+              <button class="seg" data-act="relu">ReLU</button>
+            </div>
+          </div>
+
+          <div class="card chart-card">
+            <div class="card-head"><div><div class="card-kicker">ACTIVATION</div><h2>g(z) 把数值掰弯</h2></div><button class="text-btn" id="actReset">重置</button></div>
+            <div class="chart-wrap"><canvas id="activationCanvas"></canvas></div>
+            <p class="formula-note">同一组线性输出，经过激活函数后不再是一条直线。堆叠多层，空间就被折叠成更复杂的形状。</p>
+          </div>
+
+          <div class="card formula-card compact">
+            <div class="card-kicker">FORWARD EQUATION</div>
+            <div class="math" id="netFormula"></div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="network-lower">
+        <div class="card explain-card">
+          <div class="card-kicker">WHY DEPTH?</div>
+          <h3>没有激活函数，十层等于一层</h3>
+          <p>线性变换的复合仍然是线性变换。只有插入非线性 g，网络才能表达弯曲边界、组合特征和分层抽象。</p>
+        </div>
+        <div class="card quiz-card" id="quizCard">
+          <div class="card-kicker">DIMENSION QUIZ</div>
+          <h3>w₂<sup>[3]</sup> 表示什么？</h3>
+          <p class="quiz-sub">上标是层，下标是这一层的第几个神经元。别把两者读反。</p>
+          <div class="quiz-options">
+            <button data-quiz="0">第 3 层、第 2 个神经元的权重</button>
+            <button data-quiz="1">第 2 层、第 3 个神经元的权重</button>
+            <button data-quiz="2">第 2 个样本、第 3 个特征</button>
+          </div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+        </div>
+      </div>
+
+      <div class="bottom-strip">
+        <div><b>这一页的公式</b><span>a[ℓ] = g(W[ℓ]a[ℓ−1] + b[ℓ])</span></div>
+        <div><b>你要观察</b><span>粒子流 + 激活曲线的拐点</span></div>
+        <div><b>下一步</b><button class="next-link" data-page="map">回到全局地图 →</button></div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE 4 / MAP ================= -->
+    <section class="page" id="page-map">
+      <div class="page-head">
+        <div class="page-eyebrow"><span>04 / FRAMEWORK MAP</span><i>把四页串成一条回路</i></div>
+        <h1>深度学习的<br><em>宏观框架地图。</em></h1>
+        <p>数据往前流，Loss 把错误传回来，梯度把参数推一步，然后循环。你刚刚玩的每一页，都在这条回路上。</p>
+        <div class="head-tags"><span class="pill blue">前向传播</span><span class="pill yellow">Loss</span><span class="pill pink">反向梯度</span><span class="pill outline">参数更新</span></div>
+      </div>
+
+      <div class="map-board card" id="mapBoard">
+        <div class="map-board-head"><div><div class="card-kicker">THE LOOP</div><h2>一次训练，七个站点</h2></div><button class="text-btn" id="mapReplay">重新播放数据流</button></div>
+        <div class="map-svg-wrap"><svg id="bigMap" viewBox="0 0 1200 520" role="img" aria-label="深度学习全局框架地图"></svg></div>
+        <div class="map-note">点击任意站点，回到对应实验。<span id="mapHere">当前：数据 → 矩阵乘法</span></div>
+      </div>
+
+      <div class="map-cards">
+        <div class="mini-map-card blue-tint"><span>01</span><h3>线性</h3><p>W·A 把输入换到新的坐标系。它负责组合特征，但不改变“直线仍是直线”。</p></div>
+        <div class="mini-map-card yellow-tint"><span>02</span><h3>非线性</h3><p>g(z) 把直线掰弯。多层 + 激活，才有能力拟合复杂边界。</p></div>
+        <div class="mini-map-card pink-tint"><span>03</span><h3>Loss</h3><p>衡量预测和真实差多少。它是一个地形，不是一个“分数”。</p></div>
+        <div class="mini-map-card"><span>04</span><h3>梯度</h3><p>∂L/∂w 指向最陡上坡；减去它，就是下坡。学习率决定步长。</p></div>
+      </div>
+
+      <div class="bottom-strip map-bottom">
+        <div><b>一句话</b><span>前向传播算预测，反向传播算责任，优化器改参数。</span></div>
+        <div><b>回到实验</b><button class="next-link" data-page="linear">从线性代数重新看一遍 →</button></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>网课数理翻译器 / MATH TRANSLATOR</span>
+    <span>原生 Canvas + SVG · KaTeX 公式 · 所有动画实时计算</span>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+  <script>
+/* =========================================================================
+   网课数理翻译器 — native Canvas / SVG, no chart libraries
+   Part 1: map, page routing, KaTeX helpers, linear algebra module
+   ========================================================================= */
+'use strict';
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const fmt = (v, d = 2) => Number(v).toFixed(d);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ------------------------------- framework map ------------------------------- */
+const MAP_NODES = [
+  { id: 'data', n: '01', label: '数据', sub: 'a[0]', page: 'linear' },
+  { id: 'linear', n: '02', label: '矩阵乘法', sub: 'Z = W·A', page: 'linear' },
+  { id: 'activation', n: '03', label: '激活函数', sub: 'g(z)', page: 'network' },
+  { id: 'loss', n: '04', label: '计算 Loss', sub: 'L(ŷ, y)', page: 'calculus' },
+  { id: 'gradient', n: '05', label: '梯度下降', sub: 'w ← w − η∇L', page: 'calculus' },
+  { id: 'update', n: '06', label: '更新参数', sub: 'W, b', page: 'calculus' },
+  { id: 'loop', n: '07', label: '循环', sub: '下一轮', page: 'map' }
+];
+const PAGE_NODES = {
+  linear: ['data', 'linear'],
+  calculus: ['loss', 'gradient', 'update', 'loop'],
+  network: ['linear', 'activation', 'loss'],
+  map: MAP_NODES.map(n => n.id)
+};
+const state = { page: 'linear', active: new Set(PAGE_NODES.linear) };
+
+function buildRibbon() {
+  const track = $('#ribbonTrack');
+  if (!track) return;
+  track.innerHTML = MAP_NODES.map((n, i) => `
+    <button class="ribbon-node" data-node="${n.id}" data-page="${n.page}">
+      <span class="n">${n.n}</span><b>${n.label}</b><small>${n.sub}</small>
+    </button>${i < MAP_NODES.length - 1 ? '<span class="ribbon-arrow">→</span>' : ''}`).join('');
+  $$('.ribbon-node', track).forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
+}
+
+function buildBigMap() {
+  const svg = $('#bigMap');
+  if (!svg) return;
+  const pos = {
+    data: [95, 330], linear: [300, 220], activation: [520, 140], loss: [750, 220],
+    gradient: [930, 330], update: [1080, 215], loop: [1040, 425]
+  };
+  const links = [
+    ['data', 'linear'], ['linear', 'activation'], ['activation', 'loss'],
+    ['loss', 'gradient'], ['gradient', 'update'], ['update', 'loop'], ['loop', 'data']
+  ];
+  const curve = (a, b) => {
+    const [x1, y1] = pos[a], [x2, y2] = pos[b];
+    const dx = x2 - x1, dy = y2 - y1;
+    if (a === 'loop') return `M ${x1} ${y1} C 780 520, 420 520, ${x2 + 40} ${y2}`;
+    return `M ${x1 + 38} ${y1} C ${x1 + dx * .42} ${y1 + dy * .2}, ${x2 - dx * .42} ${y2 - dy * .2}, ${x2 - 44} ${y2}`;
+  };
+  const defs = `<defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="mapArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B7C3CB"/></marker>
+  </defs>`;
+  const paths = links.map(([a, b], i) => {
+    const d = curve(a, b);
+    return `<path class="map-link" data-link="${a}-${b}" id="mapLink${i}" d="${d}" marker-end="${b === 'loop' ? '' : 'url(#mapArrow)'}"/>`;
+  }).join('');
+  const particles = links.map(([a, b], i) => `<circle class="map-pulse" r="4"><animateMotion dur="${4 + i * .25}s" repeatCount="indefinite"><mpath href="#mapLink${i}"/></animateMotion></circle>`).join('');
+  const nodes = MAP_NODES.map(n => {
+    const [x, y] = pos[n.id];
+    return `<g class="map-node" data-node="${n.id}" data-page="${n.page}" transform="translate(${x},${y})">
+      <circle class="node-bg" r="43"/>
+      <text class="node-num" y="-8">${n.n}</text>
+      <text class="node-title" y="13">${n.label}</text>
+      <text class="node-sub" y="30">${n.sub}</text>
+    </g>`;
+  }).join('');
+  svg.innerHTML = defs + paths + particles + nodes;
+  $$('.map-node', svg).forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
+}
+
+function setActiveNodes(ids, pulse = false) {
+  state.active = new Set(ids);
+  $$('.ribbon-node').forEach(el => {
+    const on = state.active.has(el.dataset.node);
+    el.classList.toggle('active', on);
+    if (pulse && on) { el.classList.remove('glow'); void el.offsetWidth; el.classList.add('glow'); }
+  });
+  $$('.map-node').forEach(el => {
+    const on = state.active.has(el.dataset.node);
+    el.classList.toggle('active', on);
+    if (pulse && on) {
+      const bg = el.querySelector('.node-bg'); if (bg) { bg.setAttribute('filter', 'url(#glow)'); setTimeout(() => bg.removeAttribute('filter'), 900); }
+    }
+  });
+  $$('.map-link').forEach(el => {
+    const [a, b] = el.dataset.link.split('-');
+    el.classList.toggle('active', state.active.has(a) && state.active.has(b));
+  });
+  const here = $('#mapHere');
+  if (here) here.textContent = '当前：' + ids.map(id => MAP_NODES.find(n => n.id === id)?.label || id).join(' → ');
+}
+
+function glowNodes(ids, pulse = true) { setActiveNodes(ids, pulse); }
+
+/* ------------------------------- page routing ------------------------------- */
+function showPage(name) {
+  if (!PAGE_NODES[name]) return;
+  state.page = name;
+  $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+  setActiveNodes(PAGE_NODES[name], false);
+  if (name === 'calculus') calc.pauseAuto();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => { resizeMatrix(); resizeCalc(); resizeNetwork(); resizeActivation(); }, 60);
+  if (name === 'network') renderNetworkSlow();
+  if (name === 'calculus') renderCalcSlow();
+}
+
+/* ------------------------------- KaTeX ------------------------------- */
+let katexOk = typeof window.katex !== 'undefined';
+function tex(el, source, display = true) {
+  if (!el) return;
+  if (window.katex) {
+    try {
+      window.katex.render(source, el, { displayMode: display, throwOnError: false, strict: false });
+      return;
+    } catch (e) { /* fall through */ }
+  }
+  el.textContent = source;
+}
+function refreshAllMath() {
+  katexOk = typeof window.katex !== 'undefined';
+  updateMatrixFormula(true);
+  updateCalcFormula(true);
+  updateNetworkFormula(true);
+}
+
+/* =========================================================================
+   MODULE 1 — LINEAR ALGEBRA
+   ========================================================================= */
+const matrix = {
+  W: { w11: 1, w12: 0, w21: 0, w22: 1 },
+  target: { w11: 1, w12: 0, w21: 0, w22: 1 },
+  selected: 19,
+  points: [],
+  particles: [],
+  metric: 0,
+  time: 0,
+  ctx: null,
+  canvas: null,
+  lastFormula: ''
+};
+
+function pseudo(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function buildMatrixPoints() {
+  matrix.points = [];
+  // 两类点沿对角线分布：身份矩阵下投影重叠，旋转/剪切后更容易分开。
+  for (let i = 0; i < 13; i++) {
+    const t = (i / 12) * 2 - 1;
+    const jx = (pseudo(i + 1) - .5) * .5;
+    const jy = (pseudo(i + 41) - .5) * .5;
+    matrix.points.push({ cls: 'blue', x: -.25 + t * 1.18 + jx, y: .25 + t * 1.18 + jy });
+  }
+  for (let i = 0; i < 13; i++) {
+    const t = (i / 12) * 2 - 1;
+    const jx = (pseudo(i + 91) - .5) * .5;
+    const jy = (pseudo(i + 131) - .5) * .5;
+    matrix.points.push({ cls: 'red', x: .35 + t * 1.18 + jx, y: -.35 + t * 1.18 + jy });
+  }
+  for (let i = 0; i < 34; i++) {
+    matrix.particles.push({
+      cls: i % 2 ? 'blue' : 'red',
+      x: -2.6 + pseudo(i + 4) * 5.2,
+      t: pseudo(i + 71),
+      speed: .016 + pseudo(i + 19) * .025
+    });
+  }
+}
+
+function matrixApply(x, y, W = matrix.W) {
+  return { x: W.w11 * x + W.w12 * y, y: W.w21 * x + W.w22 * y };
+}
+
+function matrixMetric() {
+  const by = { blue: [], red: [] };
+  matrix.points.forEach(p => {
+    const q = matrixApply(p.x, p.y, matrix.W);
+    by[p.cls].push(q);
+  });
+  const mean = arr => ({ x: arr.reduce((s, p) => s + p.x, 0) / arr.length, y: arr.reduce((s, p) => s + p.y, 0) / arr.length });
+  const mb = mean(by.blue), mr = mean(by.red);
+  const between = Math.hypot(mb.x - mr.x, mb.y - mr.y);
+  const scatter = (arr, m) => Math.sqrt(arr.reduce((s, p) => s + (p.x - m.x) ** 2 + (p.y - m.y) ** 2, 0) / arr.length);
+  const within = (scatter(by.blue, mb) + scatter(by.red, mr)) / 2 + .001;
+  return between / within;
+}
+
+function updateMatrixInputs() {
+  Object.keys(matrix.W).forEach(k => {
+    const input = $(`[data-w="${k}"]`);
+    if (input) input.value = matrix.target[k];
+    const out = $(`[data-v="${k}"]`);
+    if (out) out.textContent = fmt(matrix.W[k], 2);
+  });
+}
+
+function setMatrixTarget(W, fromPreset = false) {
+  matrix.target = { ...matrix.W, ...W };
+  Object.keys(matrix.target).forEach(k => { const input = $(`[data-w="${k}"]`); if (input) input.value = matrix.target[k]; });
+  if (fromPreset) { glowNodes(['data', 'linear']); }
+  updateMatrixRecipe();
+}
+
+function updateMatrixRecipe() {
+  const W = matrix.target;
+  const selected = matrix.points[matrix.selected] || { x: 1, y: 1 };
+  const z = matrixApply(selected.x, selected.y, W);
+  const src = `\\begin{aligned}
+    Z &= W A \\\\
+    \\begin{bmatrix} z_1 \\\\ z_2 \\end{bmatrix}
+    &=
+    \\begin{bmatrix} ${fmt(W.w11)} & ${fmt(W.w12)} \\\\ ${fmt(W.w21)} & ${fmt(W.w22)} \\end{bmatrix}
+    \\begin{bmatrix} ${fmt(selected.x)} \\\\ ${fmt(selected.y)} \\end{bmatrix}
+    =
+    \\begin{bmatrix} ${fmt(z.x)} \\\\ ${fmt(z.y)} \\end{bmatrix}
+  \\end{aligned}`;
+  if (src !== matrix.lastFormula) {
+    matrix.lastFormula = src;
+    tex($('#matrixFormula'), src);
+  }
+  const out = $('#matrixFormulaOut');
+  if (out) out.textContent = `z = (${fmt(z.x)}, ${fmt(z.y)})`;
+  const metric = matrixMetric();
+  matrix.metric = metric;
+  const p = clamp(metric / 4 * 100, 0, 100);
+  const m = $('#matrixMetric'), bar = $('#matrixMetricBar'), top = $('#matrixMetricTop'), verdict = $('#matrixVerdict');
+  if (m) m.textContent = fmt(metric, 2);
+  if (top) top.textContent = '可分度 ' + fmt(metric, 2);
+  if (bar) bar.style.width = p + '%';
+  if (verdict) verdict.textContent = metric < .8 ? '两类点仍纠缠在一起：旋转或剪切 W，找一个更舒服的投影方向。' : metric < 1.8 ? '开始分开了：类间距离在变大，继续调整 W 的方向。' : '已经拉开：数据在这个 W 下更适合被一条直线分开。';
+}
+
+function drawMatrix() {
+  const canvas = matrix.canvas, ctx = matrix.ctx;
+  if (!canvas || !ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  const w = canvas.width, h = canvas.height;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, rect.width, rect.height);
+  Object.keys(matrix.W).forEach(k => {
+    const input = $(`[data-w="${k}"]`), out = $(`[data-v="${k}"]`);
+    if (input) input.value = matrix.W[k];
+    if (out) out.textContent = fmt(matrix.W[k], 2);
+  });
+  const cx = rect.width / 2, cy = rect.height / 2 + 8;
+  const scale = Math.min(rect.width, rect.height) / 7.2;
+  const toScreen = (x, y) => ({ x: cx + x * scale, y: cy - y * scale });
+  matrix.time += .016;
+  // 背景点阵
+  ctx.fillStyle = 'rgba(39,50,58,.08)';
+  for (let x = 14; x < rect.width; x += 22) for (let y = 14; y < rect.height; y += 22) ctx.fillRect(x, y, 1.2, 1.2);
+
+  // 被 W 变换后的网格
+  ctx.lineWidth = 1;
+  for (let i = -3; i <= 3; i += .5) {
+    const a = matrixApply(i, -3, matrix.W), b = matrixApply(i, 3, matrix.W);
+    const pa = toScreen(a.x, a.y), pb = toScreen(b.x, b.y);
+    ctx.strokeStyle = i === 0 ? 'rgba(76,127,196,.7)' : 'rgba(160,196,255,.48)';
+    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    const c = matrixApply(-3, i, matrix.W), d = matrixApply(3, i, matrix.W);
+    const pc = toScreen(c.x, c.y), pd = toScreen(d.x, d.y);
+    ctx.strokeStyle = i === 0 ? 'rgba(76,127,196,.7)' : 'rgba(160,196,255,.48)';
+    ctx.beginPath(); ctx.moveTo(pc.x, pc.y); ctx.lineTo(pd.x, pd.y); ctx.stroke();
+  }
+
+  // 原始坐标轴，淡淡的
+  const o = toScreen(0, 0);
+  ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(39,50,58,.2)';
+  ctx.beginPath(); ctx.moveTo(0, o.y); ctx.lineTo(rect.width, o.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(o.x, 0); ctx.lineTo(o.x, rect.height); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 变换后的基向量
+  const e1 = matrixApply(1, 0), e2 = matrixApply(0, 1);
+  const drawArrow = (x1, y1, x2, y2, color, label) => {
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 10 * Math.cos(ang - .45), y2 - 10 * Math.sin(ang - .45)); ctx.lineTo(x2 - 10 * Math.cos(ang + .45), y2 - 10 * Math.sin(ang + .45)); ctx.closePath(); ctx.fill();
+    ctx.font = '600 13px "Cascadia Code", monospace'; ctx.fillText(label, x2 + 8, y2 - 8);
+  };
+  drawArrow(o.x, o.y, toScreen(e1.x, e1.y).x, toScreen(e1.x, e1.y).y, '#4C7FC4', 'W e₁');
+  drawArrow(o.x, o.y, toScreen(e2.x, e2.y).x, toScreen(e2.x, e2.y).y, '#C75B5B', 'W e₂');
+
+  // 流动粒子：沿着变换后的空间流动
+  matrix.particles.forEach(p => {
+    p.t += p.speed;
+    if (p.t > 1) p.t -= 1;
+    const x = p.x, y = -3 + p.t * 6;
+    const q = matrixApply(x, y, matrix.W), s = toScreen(q.x, q.y);
+    ctx.globalAlpha = .28 + .35 * (1 - Math.abs(p.t - .5) * 2);
+    ctx.fillStyle = p.cls === 'blue' ? '#7EAEFF' : '#FF8E8E';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 2.2, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // 原始数据点（淡淡的 ghost）与变换后的点
+  matrix.points.forEach((p, idx) => {
+    const q = matrixApply(p.x, p.y, matrix.W);
+    const ghost = toScreen(p.x, p.y), s = toScreen(q.x, q.y);
+    ctx.globalAlpha = .18;
+    ctx.fillStyle = p.cls === 'blue' ? '#A0C4FF' : '#FFADAD';
+    ctx.beginPath(); ctx.arc(ghost.x, ghost.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // trail
+    ctx.strokeStyle = p.cls === 'blue' ? 'rgba(126,174,255,.35)' : 'rgba(255,142,142,.35)';
+    ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(ghost.x, ghost.y); ctx.lineTo(s.x, s.y); ctx.stroke(); ctx.setLineDash([]);
+    // glow
+    ctx.shadowColor = p.cls === 'blue' ? 'rgba(126,174,255,.6)' : 'rgba(255,142,142,.6)';
+    ctx.shadowBlur = 11;
+    ctx.fillStyle = p.cls === 'blue' ? '#A0C4FF' : '#FFADAD';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 6.4, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = p.cls === 'blue' ? '#4C7FC4' : '#C75B5B'; ctx.lineWidth = 1.4; ctx.stroke();
+    if (idx === matrix.selected) {
+      ctx.strokeStyle = '#27323A'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#27323A'; ctx.font = '600 12px "Cascadia Code", monospace';
+      ctx.fillText(`A (${fmt(p.x, 1)}, ${fmt(p.y, 1)}) → Z (${fmt(q.x, 1)}, ${fmt(q.y, 1)})`, 16, 25);
+    }
+  });
+
+  // 标题/标签
+  ctx.fillStyle = 'rgba(39,50,58,.62)'; ctx.font = '600 13px "Cascadia Code", monospace';
+  ctx.fillText('W · 空间', 18, rect.height - 18);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(39,50,58,.4)'; ctx.fillText('拖矩阵，观察网格', rect.width - 18, rect.height - 18); ctx.textAlign = 'left';
+}
+
+function updateMatrixFormula(force = false) {
+  if (state.page !== 'linear' && !force) return;
+  updateMatrixRecipe();
+}
+
+function resizeMatrix() {
+  const c = $('#matrixCanvas'); if (!c) return;
+  matrix.canvas = c; matrix.ctx = c.getContext('2d');
+  drawMatrix();
+}
+
+function initMatrix() {
+  const c = $('#matrixCanvas');
+  if (!c) return;
+  matrix.canvas = c; matrix.ctx = c.getContext('2d');
+  buildMatrixPoints();
+  $$('#matrixEditor input[type=range]').forEach(input => {
+    input.addEventListener('input', () => {
+      const key = input.dataset.w;
+      matrix.target[key] = Number(input.value);
+      const out = $(`[data-v="${key}"]`); if (out) out.textContent = fmt(matrix.target[key], 2);
+      glowNodes(['data', 'linear']);
+      updateMatrixRecipe();
+    });
+  });
+  $('#matrixReset').addEventListener('click', () => {
+    setMatrixTarget({ w11: 1, w12: 0, w21: 0, w22: 1 }, true);
+    toast('W 已重置为恒等矩阵');
+  });
+  $$('[data-matrix]').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.matrix;
+    const W = {
+      identity: { w11: 1, w12: 0, w21: 0, w22: 1 },
+      rotate: { w11: .71, w12: -.71, w21: .71, w22: .71 },
+      shear: { w11: 1, w12: 1, w21: 0, w22: 1 },
+      separate: { w11: 2, w12: -1, w21: -1, w22: 2 }
+    }[key];
+    setMatrixTarget(W, true);
+    toast(key === 'separate' ? '把数据转到 W·A 的新坐标系里' : '已切换 W 预设');
+  }));
+  c.addEventListener('click', e => {
+    const rect = c.getBoundingClientRect();
+    const cx = rect.width / 2, cy = rect.height / 2 + 8;
+    const scale = Math.min(rect.width, rect.height) / 7.2;
+    const mx = (e.clientX - rect.left - cx) / scale;
+    const my = -(e.clientY - rect.top - cy) / scale;
+    let best = -1, bd = 1e9;
+    matrix.points.forEach((p, idx) => {
+      const q = matrixApply(p.x, p.y, matrix.W);
+      const d = (q.x - mx) ** 2 + (q.y - my) ** 2;
+      if (d < bd) { bd = d; best = idx; }
+    });
+    if (best >= 0 && bd < 1.2) { matrix.selected = best; updateMatrixRecipe(); glowNodes(['data', 'linear']); }
+  });
+  updateMatrixRecipe();
+  new ResizeObserver(() => drawMatrix()).observe(c.parentElement);
+}
+
+/* animation loop will be added after other modules */
+
+/* =========================================================================
+   MODULE 2 — CALCULUS / GRADIENT DESCENT
+   ========================================================================= */
+const calc = {
+  w: { x: 2.1, y: 1.8 }, display: { x: 2.1, y: 1.8 }, from: { x: 2.1, y: 1.8 }, to: { x: 2.1, y: 1.8 },
+  lr: .18, anim: null, trail: [], auto: null, diverged: false, warning: false,
+  yaw: .74, pitch: .58, zoom: 1, dragging: null, ctx: null, canvas: null, lastFormula: '', lastSeconds: 0
+};
+
+// Loss 地形：一个带轻微起伏的碗，便于观察“下坡”和“步长”。
+function calcLoss(x, y) {
+  return .22 * (x * x + 1.6 * y * y) + .35 * Math.sin(1.6 * x) * Math.cos(1.5 * y) + .08 * x * y + .42;
+}
+function calcGrad(x, y) {
+  return [
+    .44 * x + .56 * Math.cos(1.6 * x) * Math.cos(1.5 * y) + .08 * y,
+    .704 * y - .525 * Math.sin(1.6 * x) * Math.sin(1.5 * y) + .08 * x
+  ];
+}
+
+function calcProject(x, y, z, rect) {
+  const cy = Math.cos(calc.yaw), sy = Math.sin(calc.yaw);
+  const X = x * cy - y * sy;
+  const Y = x * sy + y * cy;
+  const cp = Math.cos(calc.pitch), sp = Math.sin(calc.pitch);
+  const sy2 = -Y * sp - z * cp;
+  const depth = Y * cp - z * sp;
+  const base = Math.min(rect.width, rect.height) * .15 * calc.zoom;
+  const k = base / (1 + depth * .075);
+  return { x: rect.width / 2 + X * k, y: rect.height * .61 + sy2 * k, depth };
+}
+
+function colorForLevel(t) {
+  // blue → yellow → pink
+  const stops = [[160, 196, 255], [253, 255, 182], [255, 173, 173]];
+  const u = clamp(t, 0, 1) * 2;
+  const i = Math.min(1, Math.floor(u)); const f = u - i;
+  return `rgb(${Math.round(lerp(stops[i][0], stops[i + 1][0], f))},${Math.round(lerp(stops[i][1], stops[i + 1][1], f))},${Math.round(lerp(stops[i][2], stops[i + 1][2], f))})`;
+}
+
+function calcBounds() {
+  let lo = 1e9, hi = -1e9;
+  for (let i = 0; i <= 24; i++) for (let j = 0; j <= 24; j++) {
+    const v = calcLoss(-2.5 + i / 24 * 5, -2.5 + j / 24 * 5);
+    lo = Math.min(lo, v); hi = Math.max(hi, v);
+  }
+  return { lo, hi };
+}
+
+function calcContours(rect, lo, hi) {
+  const N = 26, levels = 7;
+  const grid = [];
+  for (let i = 0; i <= N; i++) {
+    grid[i] = [];
+    for (let j = 0; j <= N; j++) {
+      const x = -2.5 + i / N * 5, y = -2.5 + j / N * 5;
+      grid[i][j] = calcLoss(x, y);
+    }
+  }
+  const ctx = calc.ctx;
+  for (let l = 1; l < levels; l++) {
+    const level = lo + (hi - lo) * (l / levels);
+    const segs = [];
+    const interp = (x1, y1, v1, x2, y2, v2) => {
+      const t = (level - v1) / (v2 - v1 || 1e-6);
+      return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
+    };
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const x0 = -2.5 + i / N * 5, y0 = -2.5 + j / N * 5, x1 = -2.5 + (i + 1) / N * 5, y1 = -2.5 + (j + 1) / N * 5;
+      const v0 = grid[i][j], v1 = grid[i + 1][j], v2 = grid[i + 1][j + 1], v3 = grid[i][j + 1];
+      const pts = [];
+      if ((v0 - level) * (v1 - level) < 0) pts.push(interp(x0, y0, v0, x1, y0, v1));
+      if ((v1 - level) * (v2 - level) < 0) pts.push(interp(x1, y0, v1, x1, y1, v2));
+      if ((v2 - level) * (v3 - level) < 0) pts.push(interp(x1, y1, v2, x0, y1, v3));
+      if ((v3 - level) * (v0 - level) < 0) pts.push(interp(x0, y1, v3, x0, y0, v0));
+      if (pts.length >= 2) segs.push([pts[0], pts[1]]);
+    }
+    ctx.strokeStyle = l === 4 ? 'rgba(39,50,58,.42)' : 'rgba(39,50,58,.22)';
+    ctx.lineWidth = l === 4 ? 1.5 : 1;
+    ctx.setLineDash(l === 4 ? [] : [4, 5]);
+    segs.forEach(([a, b]) => {
+      const p = calcProject(a[0], a[1], level, rect), q = calcProject(b[0], b[1], level, rect);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+}
+
+function drawCalc() {
+  const canvas = calc.canvas, ctx = calc.ctx;
+  if (!canvas || !ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = 'rgba(39,50,58,.07)';
+  for (let x = 14; x < rect.width; x += 24) for (let y = 14; y < rect.height; y += 24) ctx.fillRect(x, y, 1.1, 1.1);
+
+  // 动画插值
+  if (calc.anim) {
+    calc.anim.t += .016 / .7;
+    const t = clamp(calc.anim.t, 0, 1), e = ease(t);
+    calc.display.x = lerp(calc.from.x, calc.to.x, e);
+    calc.display.y = lerp(calc.from.y, calc.to.y, e);
+    if (t >= 1) {
+      calc.w = { ...calc.to }; calc.display = { ...calc.to }; calc.anim = null;
+      calc.trail.push({ ...calc.w });
+      if (calc.trail.length > 12) calc.trail.shift();
+      calcCheckBounds();
+      updateCalcFormula(true);
+    }
+  } else {
+    calc.display.x += (calc.w.x - calc.display.x) * .22;
+    calc.display.y += (calc.w.y - calc.display.y) * .22;
+  }
+
+  const { lo, hi } = calcBounds();
+  // 地面网格
+  ctx.strokeStyle = 'rgba(160,196,255,.22)'; ctx.lineWidth = 1;
+  for (let i = -2.5; i <= 2.5; i += .5) {
+    const p = calcProject(i, -2.5, .12, rect), q = calcProject(i, 2.5, .12, rect);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    const r = calcProject(-2.5, i, .12, rect), s = calcProject(2.5, i, .12, rect);
+    ctx.beginPath(); ctx.moveTo(r.x, r.y); ctx.lineTo(s.x, s.y); ctx.stroke();
+  }
+  // 表面网格
+  const N = 22;
+  const verts = [];
+  for (let i = 0; i <= N; i++) {
+    verts[i] = [];
+    for (let j = 0; j <= N; j++) {
+      const x = -2.5 + i / N * 5, y = -2.5 + j / N * 5;
+      verts[i][j] = { x, y, z: calcLoss(x, y) };
+    }
+  }
+  const quads = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const a = verts[i][j], b = verts[i + 1][j], c = verts[i + 1][j + 1], d = verts[i][j + 1];
+    const p = [calcProject(a.x, a.y, a.z, rect), calcProject(b.x, b.y, b.z, rect), calcProject(c.x, c.y, c.z, rect), calcProject(d.x, d.y, d.z, rect)];
+    quads.push({ p, depth: (p[0].depth + p[1].depth + p[2].depth + p[3].depth) / 4, z: (a.z + b.z + c.z + d.z) / 4 });
+  }
+  quads.sort((a, b) => a.depth - b.depth);
+  quads.forEach(q => {
+    const t = (q.z - lo) / (hi - lo || 1);
+    ctx.fillStyle = colorForLevel(t);
+    ctx.globalAlpha = .78;
+    ctx.beginPath(); ctx.moveTo(q.p[0].x, q.p[0].y); ctx.lineTo(q.p[1].x, q.p[1].y); ctx.lineTo(q.p[2].x, q.p[2].y); ctx.lineTo(q.p[3].x, q.p[3].y); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = .25; ctx.strokeStyle = '#27323A'; ctx.lineWidth = .5; ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  calcContours(rect, lo, hi);
+
+  // 轴
+  const o = calcProject(0, 0, .1, rect);
+  ctx.strokeStyle = 'rgba(39,50,58,.45)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(calcProject(2.8, 0, .1, rect).x, calcProject(2.8, 0, .1, rect).y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(calcProject(0, 2.8, .1, rect).x, calcProject(0, 2.8, .1, rect).y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(calcProject(0, 0, 3.5, rect).x, calcProject(0, 0, 3.5, rect).y); ctx.stroke();
+  ctx.fillStyle = 'rgba(39,50,58,.7)'; ctx.font = '600 12px "Cascadia Code", monospace';
+  ctx.fillText('w₁', calcProject(2.9, 0, .1, rect).x + 4, calcProject(2.9, 0, .1, rect).y);
+  ctx.fillText('w₂', calcProject(0, 2.9, .1, rect).x + 4, calcProject(0, 2.9, .1, rect).y);
+  ctx.fillText('Loss', calcProject(0, 0, 3.6, rect).x + 4, calcProject(0, 0, 3.6, rect).y);
+
+  // 轨迹
+  if (calc.trail.length > 1) {
+    ctx.strokeStyle = 'rgba(199,91,91,.55)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+    calc.trail.forEach((p, i) => {
+      const s = calcProject(p.x, p.y, calcLoss(p.x, p.y) + .03, rect);
+      if (i === 0) ctx.beginPath(), ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // 梯度箭头（地面上）
+  const g = calcGrad(calc.w.x, calc.w.y);
+  const gs = calcProject(calc.w.x, calc.w.y, .12, rect);
+  const ge = calcProject(calc.w.x - g[0] * .4, calc.w.y - g[1] * .4, .12, rect);
+  ctx.strokeStyle = 'rgba(199,91,91,.8)'; ctx.fillStyle = 'rgba(199,91,91,.8)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(gs.x, gs.y); ctx.lineTo(ge.x, ge.y); ctx.stroke();
+  const ang = Math.atan2(ge.y - gs.y, ge.x - gs.x);
+  ctx.beginPath(); ctx.moveTo(ge.x, ge.y); ctx.lineTo(ge.x - 9 * Math.cos(ang - .45), ge.y - 9 * Math.sin(ang - .45)); ctx.lineTo(ge.x - 9 * Math.cos(ang + .45), ge.y - 9 * Math.sin(ang + .45)); ctx.closePath(); ctx.fill();
+
+  // 球与影子
+  const z = calcLoss(calc.display.x, calc.display.y);
+  const ball = calcProject(calc.display.x, calc.display.y, z + .06, rect);
+  const shadow = calcProject(calc.display.x, calc.display.y, .08, rect);
+  ctx.fillStyle = 'rgba(39,50,58,.14)'; ctx.beginPath(); ctx.ellipse(shadow.x, shadow.y, 17, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowColor = 'rgba(255,173,173,.8)'; ctx.shadowBlur = 18;
+  ctx.fillStyle = '#FFADAD'; ctx.strokeStyle = '#C75B5B'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#27323A'; ctx.beginPath(); ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); ctx.fill();
+
+  // 标记
+  ctx.fillStyle = 'rgba(39,50,58,.7)'; ctx.font = '600 12px "Cascadia Code", monospace';
+  ctx.fillText(`w = (${fmt(calc.display.x)}, ${fmt(calc.display.y)})`, 18, 26);
+  ctx.fillText(`L = ${fmt(z, 3)}`, 18, 45);
+  if (calc.diverged) {
+    ctx.fillStyle = 'rgba(199,91,91,.92)'; ctx.font = '700 15px "Cascadia Code", monospace';
+    ctx.fillText('⚠ 梯度爆炸：球飞出了地形图', 18, rect.height - 22);
+  } else if (calc.lr < .03) {
+    ctx.fillStyle = 'rgba(76,127,196,.9)'; ctx.font = '600 12px "Cascadia Code", monospace';
+    ctx.fillText('学习率偏小：移动非常慢', 18, rect.height - 22);
+  } else if (calc.lr > .75) {
+    ctx.fillStyle = 'rgba(199,91,91,.9)'; ctx.font = '600 12px "Cascadia Code", monospace';
+    ctx.fillText('学习率偏大：可能震荡或爆炸', 18, rect.height - 22);
+  }
+}
+
+function calcCheckBounds() {
+  const r = Math.hypot(calc.w.x, calc.w.y);
+  const l = calcLoss(calc.w.x, calc.w.y);
+  if (r > 4.6 || !Number.isFinite(l) || l > 12) {
+    calc.diverged = true; calc.warning = true;
+    if (calc.auto) calc.pauseAuto();
+    $('#calcStatus').textContent = '梯度爆炸';
+    $('#calcStatus').style.color = '#C75B5B';
+    toast('梯度爆炸：学习率太大，球飞出去了');
+  } else {
+    calc.diverged = false;
+    $('#calcStatus').textContent = l < .6 ? '接近谷底' : '球在山上';
+    $('#calcStatus').style.color = l < .6 ? '#4C7FC4' : '';
+  }
+}
+
+function updateCalcNumbers() {
+  const g = calcGrad(calc.w.x, calc.w.y);
+  const l = calcLoss(calc.w.x, calc.w.y);
+  const el = $('#calcNumbers');
+  if (el) el.innerHTML = `
+    <div><span>w₁</span><b>${fmt(calc.w.x)}</b></div>
+    <div><span>w₂</span><b>${fmt(calc.w.y)}</b></div>
+    <div><span>∂L/∂w₁</span><b>${fmt(g[0])}</b></div>
+    <div><span>∂L/∂w₂</span><b>${fmt(g[1])}</b></div>
+    <div><span>Loss</span><b>${fmt(l, 3)}</b></div>
+    <div><span>|∇L|</span><b>${fmt(Math.hypot(g[0], g[1]))}</b></div>`;
+}
+
+function updateCalcFormula(force = false) {
+  if (state.page !== 'calculus' && !force) return;
+  const g = calcGrad(calc.w.x, calc.w.y);
+  const src = `w \\leftarrow w - \\eta\\,\\frac{\\partial L}{\\partial w}`;
+  if (src !== calc.lastFormula) { calc.lastFormula = src; tex($('#calcFormula'), src); }
+  tex($('#calcChain'), `\\frac{\\partial L}{\\partial w_1}=${fmt(g[0])},\\quad \\frac{\\partial L}{\\partial w_2}=${fmt(g[1])}`);
+  updateCalcNumbers();
+}
+
+function calcStep() {
+  if (calc.anim || calc.diverged) return;
+  const g = calcGrad(calc.w.x, calc.w.y);
+  calc.from = { ...calc.w };
+  // 学习率过大时，Euler 更新会数值不稳定：演示上放大这一次过冲，让“飞出去”可见。
+  const unstable = calc.lr > .95 ? 2.2 + (calc.lr - .95) * 6 : 1;
+  calc.to = { x: calc.w.x - calc.lr * g[0] * unstable, y: calc.w.y - calc.lr * g[1] * unstable };
+  calc.anim = { t: 0 };
+  glowNodes(['loss', 'gradient', 'update', 'loop']);
+  $('#calcStatus').textContent = '正在下坡';
+}
+
+function calcReset() {
+  calc.pauseAuto();
+  calc.w = { x: 2.1, y: 1.8 }; calc.display = { ...calc.w }; calc.from = { ...calc.w }; calc.to = { ...calc.w };
+  calc.trail = []; calc.anim = null; calc.diverged = false; calc.warning = false;
+  $('#calcStatus').textContent = '球在山上'; $('#calcStatus').style.color = '';
+  updateCalcFormula(true); drawCalc();
+}
+
+const calcAuto = {
+  run() {
+    if (calc.auto) return;
+    calc.auto = setInterval(() => {
+      if (calc.diverged) { calc.pauseAuto(); return; }
+      const l = calcLoss(calc.w.x, calc.w.y);
+      if (l < .48) { calc.pauseAuto(); toast('已经接近谷底，梯度接近 0'); return; }
+      calcStep();
+    }, 750);
+    $('#gradAuto').textContent = '停止自动';
+  },
+  pause() {
+    if (calc.auto) clearInterval(calc.auto);
+    calc.auto = null;
+    const b = $('#gradAuto'); if (b) b.textContent = '自动下降';
+  }
+};
+calc.pauseAuto = () => calcAuto.pause();
+
+function resizeCalc() {
+  const c = $('#lossCanvas'); if (!c) return;
+  calc.canvas = c; calc.ctx = c.getContext('2d');
+  drawCalc();
+}
+function renderCalcSlow() { updateCalcFormula(true); drawCalc(); }
+
+function initCalc() {
+  const c = $('#lossCanvas');
+  if (!c) return;
+  calc.canvas = c; calc.ctx = c.getContext('2d');
+  $('#lrSlider').addEventListener('input', e => {
+    calc.lr = Number(e.target.value);
+    $('#lrValue').textContent = fmt(calc.lr, 3);
+    $('#lrHint').textContent = calc.lr < .03 ? '学习率太小：每一步几乎不动，收敛会非常慢。' : calc.lr > .75 ? '学习率太大：可能震荡、跳过谷底，甚至梯度爆炸。' : '这个范围比较稳：观察小球是否持续下降。';
+    glowNodes(['gradient', 'update']);
+  });
+  $('#gradStep').addEventListener('click', calcStep);
+  $('#gradAuto').addEventListener('click', () => { if (calc.auto) calc.pauseAuto(); else calcAuto.run(); });
+  $('#gradReset').addEventListener('click', calcReset);
+  c.addEventListener('pointerdown', e => {
+    calc.dragging = { x: e.clientX, y: e.clientY, yaw: calc.yaw, pitch: calc.pitch };
+    c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing';
+  });
+  c.addEventListener('pointermove', e => {
+    if (!calc.dragging) return;
+    calc.yaw = calc.dragging.yaw - (e.clientX - calc.dragging.x) * .007;
+    calc.pitch = clamp(calc.dragging.pitch + (e.clientY - calc.dragging.y) * .005, .22, 1.15);
+  });
+  c.addEventListener('pointerup', e => { calc.dragging = null; c.style.cursor = 'grab'; try { c.releasePointerCapture(e.pointerId); } catch {} });
+  c.addEventListener('wheel', e => { e.preventDefault(); calc.zoom = clamp(calc.zoom + e.deltaY * .0008, .65, 1.7); }, { passive: false });
+  new ResizeObserver(() => drawCalc()).observe(c.parentElement);
+  updateCalcFormula(true);
+}
+
+/* =========================================================================
+   MODULE 3 — NEURAL NETWORK / FORWARD PASS
+   ========================================================================= */
+const net = {
+  inputs: [.8, -.5],
+  act: 'sigmoid',
+  W1: [[1.15, -.72], [.86, 1.24], [-1.04, .64]],
+  b1: [.08, -.14, .04],
+  W2: [1.18, -1.06, .74],
+  b2: .08,
+  ctx: null, canvas: null, actCtx: null, actCanvas: null,
+  flashUntil: 0, quizAnswered: false, lastFormula: ''
+};
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+function relu(z) { return Math.max(0, z); }
+function activate(z) { return net.act === 'sigmoid' ? sigmoid(z) : relu(z); }
+
+function computeNet() {
+  const a0 = net.inputs;
+  const z1 = net.W1.map((row, j) => row[0] * a0[0] + row[1] * a0[1] + net.b1[j]);
+  const a1 = z1.map(activate);
+  const z2 = net.W2.reduce((s, w, j) => s + w * a1[j], net.b2);
+  const y = activate(z2);
+  return { a0, z1, a1, z2, y };
+}
+
+function drawNetwork() {
+  const canvas = net.canvas, ctx = net.ctx;
+  if (!canvas || !ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(39,50,58,.07)';
+  for (let x = 14; x < w; x += 24) for (let y = 14; y < h; y += 24) ctx.fillRect(x, y, 1.1, 1.1);
+
+  const { z1, a1, z2, y } = computeNet();
+  const inX = w * .16, hidX = w * .49, outX = w * .82;
+  const inY = [h * .37, h * .67];
+  const hidY = [h * .26, h * .5, h * .74];
+  const outY = h * .5;
+  const t = performance.now();
+  const flash = t < net.flashUntil;
+
+  // edges with particles
+  function edge(x1, y1, x2, y2, weight, phase) {
+    const pos = weight >= 0 ? '#4C7FC4' : '#C75B5B';
+    const alpha = .18 + Math.min(1, Math.abs(weight)) * .16;
+    ctx.strokeStyle = flash ? 'rgba(199,91,91,.8)' : pos;
+    ctx.globalAlpha = flash ? .9 : alpha;
+    ctx.lineWidth = 1.2 + Math.min(2.2, Math.abs(weight) * 1.1);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    for (let k = 0; k < 2; k++) {
+      const p = ((t * .00013 * (1 + Math.abs(weight)) + phase + k * .5) % 1);
+      // avoid crossing the node radius
+      const tt = .12 + p * .76;
+      const px = lerp(x1, x2, tt), py = lerp(y1, y2, tt);
+      ctx.fillStyle = flash ? '#C75B5B' : (weight >= 0 ? '#A0C4FF' : '#FFADAD');
+      ctx.beginPath(); ctx.arc(px, py, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#FFFDF8'; ctx.lineWidth = .8; ctx.stroke();
+    }
+  }
+  net.W1.forEach((row, j) => row.forEach((weight, i) => edge(inX, inY[i], hidX, hidY[j], weight, i * .17 + j * .11)));
+  net.W2.forEach((weight, j) => edge(hidX, hidY[j], outX, outY, weight, j * .2 + .4));
+
+  // nodes
+  function node(x, y, r, fill, label, value, sub) {
+    ctx.shadowColor = 'rgba(39,50,58,.14)'; ctx.shadowBlur = 12;
+    ctx.fillStyle = fill; ctx.strokeStyle = '#27323A'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#27323A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 13px "Cascadia Code", monospace'; ctx.fillText(label, x, y - 9);
+    ctx.font = '600 15px "Cascadia Code", monospace'; ctx.fillText(value, x, y + 10);
+    if (sub) { ctx.fillStyle = 'rgba(39,50,58,.5)'; ctx.font = '11px "Cascadia Code", monospace'; ctx.fillText(sub, x, y + r + 17); }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+  node(inX, inY[0], 31, '#A0C4FF', 'a₁⁰', fmt(net.inputs[0], 2), '输入');
+  node(inX, inY[1], 31, '#A0C4FF', 'a₂⁰', fmt(net.inputs[1], 2), '输入');
+  for (let j = 0; j < 3; j++) node(hidX, hidY[j], 31, '#FDFFB6', `h${j + 1}`, fmt(a1[j], 2), `z=${fmt(z1[j], 2)}`);
+  node(outX, outY, 35, '#FFADAD', 'ŷ', fmt(y, 2), '输出');
+  // layer labels
+  ctx.fillStyle = 'rgba(39,50,58,.5)'; ctx.font = '600 11px "Cascadia Code", monospace'; ctx.textAlign = 'center';
+  ctx.fillText('输入层 a[0]', inX, h * .93);
+  ctx.fillText('隐藏层 a[1]', hidX, h * .93);
+  ctx.fillText('输出层 a[2]', outX, h * .93);
+  ctx.textAlign = 'left';
+  // legend / formula hint
+  ctx.fillStyle = 'rgba(39,50,58,.65)'; ctx.font = '600 12px "Cascadia Code", monospace';
+  ctx.fillText('g = ' + (net.act === 'sigmoid' ? 'Sigmoid' : 'ReLU'), 18, 25);
+  ctx.fillStyle = 'rgba(39,50,58,.4)'; ctx.fillText('粒子 = 带权重的数据流', 18, h - 18);
+}
+
+function drawActivation() {
+  const canvas = net.actCanvas, ctx = net.actCtx;
+  if (!canvas || !ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, w, h);
+  const xmin = -4, xmax = 4, ymin = -.18, ymax = 1.35;
+  const X = z => 28 + (z - xmin) / (xmax - xmin) * (w - 46);
+  const Y = v => h - 24 - (v - ymin) / (ymax - ymin) * (h - 42);
+  ctx.strokeStyle = 'rgba(39,50,58,.15)'; ctx.lineWidth = 1;
+  for (let z = -4; z <= 4; z++) { ctx.beginPath(); ctx.moveTo(X(z), Y(ymin)); ctx.lineTo(X(z), Y(ymax)); ctx.stroke(); }
+  for (let v = 0; v <= 1; v += .5) { ctx.beginPath(); ctx.moveTo(X(xmin), Y(v)); ctx.lineTo(X(xmax), Y(v)); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(39,50,58,.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(X(xmin), Y(0)); ctx.lineTo(X(xmax), Y(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X(0), Y(ymin)); ctx.lineTo(X(0), Y(ymax)); ctx.stroke();
+  // curve
+  ctx.strokeStyle = '#4C7FC4'; ctx.lineWidth = 3; ctx.beginPath();
+  for (let i = 0; i <= 140; i++) {
+    const z = xmin + (xmax - xmin) * i / 140, v = activate(z);
+    const px = X(z), py = Y(v);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  // derivative dashed
+  ctx.strokeStyle = 'rgba(199,91,91,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.beginPath();
+  for (let i = 0; i <= 140; i++) {
+    const z = xmin + (xmax - xmin) * i / 140;
+    const d = net.act === 'sigmoid' ? activate(z) * (1 - activate(z)) : (z > 0 ? 1 : 0);
+    const py = Y(d * 1.1);
+    i === 0 ? ctx.moveTo(X(z), py) : ctx.lineTo(X(z), py);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  // points
+  const { z1, z2 } = computeNet();
+  for (let i = 0; i < 3; i++) {
+    const z = z1[i]; const px = X(z), py = Y(activate(z));
+    ctx.fillStyle = '#B49A24'; ctx.strokeStyle = '#FFFDF8'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(180,154,36,.35)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(px, Y(0)); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+  }
+  const px = X(z2), py = Y(activate(z2));
+  ctx.fillStyle = '#FFADAD'; ctx.strokeStyle = '#C75B5B'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(39,50,58,.65)'; ctx.font = '600 11px "Cascadia Code", monospace';
+  ctx.fillText('z', w - 26, Y(0) + 15); ctx.fillText('g(z)', X(xmin) + 2, Y(ymax) + 12);
+  ctx.fillStyle = 'rgba(39,50,58,.45)'; ctx.fillText('黄点 = 隐藏层 z；粉点 = 输出 z', 30, 16);
+}
+
+function updateNetworkFormula(force = false) {
+  if (state.page !== 'network' && !force) return;
+  const { a1, y } = computeNet();
+  const src = `\\begin{aligned}
+    a^{[1]} &= g\\!\\left(W^{[1]}a^{[0]} + b^{[1]}\\right) \\\\
+    \\hat y &= g\\!\\left(W^{[2]}a^{[1]} + b^{[2]}\\right)
+  \\end{aligned}`;
+  if (src !== net.lastFormula) { net.lastFormula = src; tex($('#netFormula'), src); }
+  const out = $('#netOut'); if (out) out.textContent = 'ŷ = ' + fmt(y, 3);
+  const st = $('#netStatus'); if (st) st.textContent = 'g = ' + (net.act === 'sigmoid' ? 'Sigmoid' : 'ReLU');
+  if (net.actCanvas) drawActivation();
+}
+
+function updateNetInputs() {
+  $('#in1v').textContent = fmt(net.inputs[0], 2);
+  $('#in2v').textContent = fmt(net.inputs[1], 2);
+  updateNetworkFormula(true);
+  glowNodes(['linear', 'activation', 'loss']);
+}
+
+function initNetwork() {
+  const c = $('#networkCanvas');
+  const ac = $('#activationCanvas');
+  if (!c || !ac) return;
+  net.canvas = c; net.ctx = c.getContext('2d');
+  net.actCanvas = ac; net.actCtx = ac.getContext('2d');
+  $('#in1').addEventListener('input', e => { net.inputs[0] = Number(e.target.value); updateNetInputs(); });
+  $('#in2').addEventListener('input', e => { net.inputs[1] = Number(e.target.value); updateNetInputs(); });
+  $$('.seg').forEach(b => b.addEventListener('click', () => {
+    net.act = b.dataset.act;
+    $$('.seg').forEach(x => x.classList.toggle('active', x === b));
+    updateNetworkFormula(true);
+    glowNodes(['activation']);
+  }));
+  $('#actReset').addEventListener('click', () => {
+    net.inputs = [.8, -.5]; net.act = 'sigmoid';
+    $('#in1').value = .8; $('#in2').value = -.5;
+    $$('.seg').forEach(x => x.classList.toggle('active', x.dataset.act === 'sigmoid'));
+    updateNetInputs();
+  });
+  $$('#quizCard .quiz-options button').forEach(btn => btn.addEventListener('click', () => {
+    const idx = Number(btn.dataset.quiz);
+    if (net.quizAnswered) return;
+    net.quizAnswered = true;
+    if (idx === 0) {
+      btn.classList.add('correct');
+      $('#quizFeedback').textContent = '正确：上标 [3] 是层，下标 2 是这一层的第 2 个神经元。W[3] 的形状由第 3 层的神经元数和第 2 层的输出维数共同决定。';
+      glowNodes(['linear', 'activation']);
+      toast('维度直觉 +1');
+    } else {
+      btn.classList.add('wrong');
+      net.flashUntil = performance.now() + 900;
+      $('#quizFeedback').textContent = '再看一眼：上标 [3] 是第 3 层，下标 2 是这一层的第 2 个神经元。红色连线正在提醒你层与神经元的区别。';
+      glowNodes(['linear', 'activation']);
+      toast('注意：上标是层，下标是神经元');
+    }
+  }));
+  new ResizeObserver(() => { drawNetwork(); drawActivation(); }).observe(c.parentElement);
+  updateNetInputs();
+}
+
+function resizeNetwork() {
+  const c = $('#networkCanvas'); if (!c) return;
+  net.canvas = c; net.ctx = c.getContext('2d');
+  const a = $('#activationCanvas'); if (a) { net.actCanvas = a; net.actCtx = a.getContext('2d'); }
+  drawNetwork(); drawActivation();
+}
+function resizeActivation() { const a = $('#activationCanvas'); if (a) { net.actCanvas = a; net.actCtx = a.getContext('2d'); drawActivation(); } }
+function renderNetworkSlow() { updateNetworkFormula(true); drawNetwork(); drawActivation(); }
+
+/* =========================================================================
+   PAGE TABS, TOAST, ANIMATION LOOP
+   ========================================================================= */
+let toastTimer = null;
+function toast(msg) {
+  const el = $('#toast'); if (!el) return;
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function bindPages() {
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-page]');
+    if (el) { e.preventDefault(); showPage(el.dataset.page); }
+  });
+  window.addEventListener('resize', () => {
+    resizeMatrix(); resizeCalc(); resizeNetwork(); resizeActivation();
+  });
+}
+
+function init() {
+  buildRibbon();
+  buildBigMap();
+  initMatrix();
+  initCalc();
+  initNetwork();
+  $('#mapReplay')?.addEventListener('click', () => {
+    setActiveNodes(PAGE_NODES.map, true);
+    toast('数据流重新播放：数据 → 线性 → 激活 → Loss → 梯度 → 更新 → 循环');
+  });
+  bindPages();
+  setActiveNodes(PAGE_NODES.linear, false);
+  refreshAllMath();
+  showPage('linear');
+  // 如果 KaTeX 是异步加载的，稍后再补一次
+  setTimeout(refreshAllMath, 900);
+  setTimeout(refreshAllMath, 2200);
+  requestAnimationFrame(loop);
+}
+
+let last = performance.now(), matrixFormulaAt = 0;
+function loop(now) {
+  const dt = Math.min(50, now - last); last = now;
+  if (state.page === 'linear') {
+    // 权重矩阵平滑追踪目标值：滑块的数字变化 → 空间连续折叠
+    Object.keys(matrix.W).forEach(k => { matrix.W[k] = lerp(matrix.W[k], matrix.target[k], .16); });
+    if (now - matrixFormulaAt > 100) { matrixFormulaAt = now; updateMatrixRecipe(); }
+    drawMatrix();
+  } else if (state.page === 'calculus') {
+    drawCalc();
+    if (now - calc.lastSeconds > 110) { calc.lastSeconds = now; updateCalcFormula(true); }
+  } else if (state.page === 'network') {
+    drawNetwork();
+    if (now % 50 < dt) drawActivation();
+  }
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('load', init);
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
