@@ -361,6 +361,72 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
 .formula-card{width:100%;max-width:100%}
 .formula-card .math,.formula-card .katex-display{width:100%;max-width:100%}
 
+/* ================= notation / pipeline / CNN additions ================= */
+.notation-banner{
+  display:grid;grid-template-columns:.85fr .85fr 2.3fr;gap:0;align-items:stretch;
+  margin:0 0 22px;padding:0;overflow:hidden;background:linear-gradient(90deg,#FFFDF8,#FFF8E5 55%,#FFF0F0);
+}
+.notation-block{display:flex;align-items:center;gap:14px;padding:20px 22px;border-right:1px dashed var(--line-strong)}
+.notation-symbol{font-family:var(--display);font-size:42px;line-height:1;color:var(--ink);white-space:nowrap;min-width:82px}
+.notation-symbol sub,.notation-symbol sup{font-size:.46em;color:var(--blue-deep)}
+.notation-block b{font-size:16px;display:block}
+.notation-block p{font-size:12px;line-height:1.55;color:var(--muted);margin-top:4px}
+.notation-translate{padding:18px 22px;min-width:0}
+.notation-translate .math{font-size:19px;padding:3px 0 7px}
+.notation-translate p{font-size:12.5px;line-height:1.6;color:var(--ink-2)}
+.notation-warning{margin-top:6px;color:var(--pink-deep)!important}
+.notation-warning b{color:var(--ink)}
+.pipeline-strip{display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow-x:auto;margin:0 0 8px;padding:4px 2px 8px;scrollbar-width:none}
+.pipeline-strip::-webkit-scrollbar{display:none}
+.pipeline-strip button{flex:1;min-width:145px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);transition:.2s}
+.pipeline-strip button:hover{background:var(--yellow);transform:translateY(-1px)}
+.pipeline-strip button span{display:block;font-family:var(--mono);font-size:10px;color:var(--blue-deep)}
+.pipeline-strip button b{display:block;font-family:var(--display);font-size:20px;margin-top:2px}
+.pipeline-strip button small{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
+.pipeline-strip i{font-style:normal;color:var(--faint);font-family:var(--mono);padding:0 5px;flex:0 0 auto}
+.pipeline-note{font-size:13px;color:var(--muted);margin:0 0 16px}
+.cnn-branch{margin-top:12px;padding:9px 13px;border:1px dashed rgba(199,91,91,.42);border-radius:10px;background:#FFF5F5;color:var(--pink-deep);font-size:12px;transition:.2s}
+.cnn-branch:hover{background:var(--pink);color:var(--ink)}
+.code-card.wide{grid-column:1/-1;margin-top:0}
+.code-card pre{margin:10px 0;padding:14px 16px;background:#27323A;color:#F8F2E8;border-radius:12px;font:13px/1.7 var(--mono);overflow-x:auto;white-space:pre}
+.code-card p{font-size:13px;line-height:1.65;color:var(--muted)}
+.code-card p b{color:var(--ink)}
+.qmath{display:block;font-size:14px;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.quiz-options button{padding:12px 13px}
+.quiz-options .katex{font-size:1em}
+.cnn-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.55fr);gap:24px;align-items:start}
+.canvas-wrap.cnn{height:clamp(480px,60vh,660px)}
+.cnn-lower{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.feature-card{padding:18px}
+.feature-card canvas{display:block;width:100%;height:170px;margin:10px 0 6px;background:#FFFCF5;border:1px solid var(--line);border-radius:10px}
+.feature-card p{font-size:12.5px;line-height:1.6;color:var(--muted)}
+.kernel-buttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 12px}
+.kernel-buttons button{padding:8px;border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--ink-2);background:#FFFEF7;transition:.2s}
+.kernel-buttons button:hover{background:var(--yellow)}
+.kernel-buttons button.active{background:var(--pink);border-color:rgba(199,91,91,.25)}
+.kernel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-width:230px;margin:0 auto 10px}
+.kernel-cell{padding:9px 3px;text-align:center;border-radius:6px;background:var(--yellow);font-family:var(--mono);font-size:12px;border:1px solid rgba(180,154,36,.16)}
+.kernel-cell.neg{background:#FFE4E4;border-color:rgba(199,91,91,.16)}
+@media(max-width:1050px){
+  .notation-banner{grid-template-columns:1fr 1fr}
+  .notation-translate{grid-column:1/-1;border-top:1px dashed var(--line-strong)}
+  .cnn-grid{grid-template-columns:1fr}
+  .cnn-lower{grid-template-columns:1fr 1fr}
+  .pipeline-strip{flex-wrap:nowrap}
+}
+@media(max-width:720px){
+  .notation-banner{grid-template-columns:1fr}
+  .notation-block{border-right:0;border-bottom:1px dashed var(--line-strong);padding:15px 16px}
+  .notation-symbol{font-size:34px}
+  .notation-translate{padding:15px 16px}
+  .pipeline-strip button{min-width:128px;padding:9px 10px}
+  .pipeline-strip button b{font-size:17px}
+  .cnn-lower{grid-template-columns:1fr}
+  .feature-card canvas{height:150px}
+  .canvas-wrap.cnn{height:440px}
+  .code-card pre{font-size:11px}
+}
+
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 </head>
@@ -380,6 +446,7 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
       <button class="tab" data-page="calculus"><span>02</span>微积分</button>
       <button class="tab" data-page="network"><span>03</span>神经网络</button>
       <button class="tab" data-page="map"><span>04</span>学科地图</button>
+      <button class="tab" data-page="cnn"><span>05</span>卷积视觉</button>
     </nav>
     <div class="top-note"><span class="live-dot"></span><b>60 FPS</b><i>拖动 · 观察 · 建立直觉</i></div>
   </header>
@@ -515,6 +582,23 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
         <div class="head-tags"><span class="pill blue">a⁰ 输入</span><span class="pill yellow">W, b 线性</span><span class="pill pink">g(z) 非线性</span><span class="pill outline">2 → 3 → 1</span></div>
       </div>
 
+      <div class="notation-banner card">
+        <div class="notation-block">
+          <div class="notation-symbol">a<sub>2</sub><sup>[3]</sup></div>
+          <div><b>上标 = 楼层</b><p>[2] 是第 2 层，[3] 是第 3 层（图里正在算的这层）。</p></div>
+        </div>
+        <div class="notation-block">
+          <div class="notation-symbol">a<sub>2</sub><sup>[3]</sup></div>
+          <div><b>下标 = 房间号</b><p>_1 是这层第 1 个圆圈，_2 是第 2 个圆圈。别把楼层和房间号读反。</p></div>
+        </div>
+        <div class="notation-translate">
+          <div class="card-kicker">翻译成人话</div>
+          <div class="math" id="notationFormula"></div>
+          <p>第 3 层第 2 个房间的激活值 = 挤压机（第 3 层第 2 个房间的权重 · 第 2 层传来的<b>所有</b>数据 + 第 3 层第 2 个房间的偏置）。</p>
+          <p class="notation-warning">注意：<b>a⃗[2]</b> 是第 2 层所有神经元打包成的向量；<b>a₂[2]</b> 只是其中一个数。全连接层必须用整个向量。</p>
+        </div>
+      </div>
+
       <div class="network-grid">
         <div class="canvas-card">
           <div class="canvas-top"><span>FORWARD PASS / 2-3-1</span><span id="netStatus">g = Sigmoid</span></div>
@@ -553,18 +637,26 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
           <p>线性变换的复合仍然是线性变换。只有插入非线性 g，网络才能表达弯曲边界、组合特征和分层抽象。</p>
         </div>
         <div class="card quiz-card" id="quizCard">
-          <div class="card-kicker">DIMENSION QUIZ</div>
-          <h3>w₂<sup>[3]</sup> 表示什么？</h3>
-          <p class="quiz-sub">上标是层，下标是这一层的第几个神经元。别把两者读反。</p>
+          <div class="card-kicker">FORMULA QUIZ / 排雷</div>
+          <h3>第 3 层第 2 个神经元的正确公式是？</h3>
+          <p class="quiz-sub">等号左边在算第 [3] 层的输出；等号右边必须用上一层 [2] 的全部输出。</p>
           <div class="quiz-options">
-            <button data-quiz="0">第 3 层、第 2 个神经元的权重</button>
-            <button data-quiz="1">第 2 层、第 3 个神经元的权重</button>
-            <button data-quiz="2">第 2 个样本、第 3 个特征</button>
+            <button data-quiz="0"><span class="qmath" data-tex="a_2^{[3]}=g\!\left(w_2^{[3]}\cdot\vec a^{[2]}+b_2^{[3]}\right)"></span></button>
+            <button data-quiz="1"><span class="qmath" data-tex="a_2^{[3]}=g\!\left(w_2^{[3]}\cdot\vec a^{[3]}+\cdots\right)"></span></button>
+            <button data-quiz="2"><span class="qmath" data-tex="a_2^{[3]}=g\!\left(w_2^{[3]}\cdot a_2^{[2]}+\cdots\right)"></span></button>
           </div>
           <div class="quiz-feedback" id="quizFeedback"></div>
         </div>
       </div>
 
+      <div class="card code-card wide">
+        <div class="card-kicker">PYTORCH / 只有几行</div>
+        <h3>别被上下标吓到，代码里只有“上一层 → 这一层”</h3>
+        <pre>layer1 = nn.Linear(4, 3)   # 4 个特征 -> 3 个神经元
+layer2 = nn.Linear(3, 5)   # 接收上一层的 3 个 -> 5 个神经元
+layer3 = nn.Linear(5, 2)   # 接收上一层的 5 个 -> 2 个输出</pre>
+        <p>PyTorch 会在底层自动把 <b>a⃗[2]</b> 和 <b>w₂[3]</b> 做矩阵乘法。你只需要记住：<b>上一层的全部输出，是下一层的输入向量。</b></p>
+      </div>
       <div class="bottom-strip">
         <div><b>这一页的公式</b><span>a[ℓ] = g(W[ℓ]a[ℓ−1] + b[ℓ])</span></div>
         <div><b>你要观察</b><span>粒子流 + 激活曲线的拐点</span></div>
@@ -581,10 +673,24 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
         <div class="head-tags"><span class="pill blue">前向传播</span><span class="pill yellow">Loss</span><span class="pill pink">反向梯度</span><span class="pill outline">参数更新</span></div>
       </div>
 
+      <div class="pipeline-strip">
+        <button data-page="linear"><span>01</span><b>输入</b><small>数据 x</small></button>
+        <i>→</i>
+        <button data-page="linear"><span>02</span><b>线性</b><small>W·x + b</small></button>
+        <i>→</i>
+        <button data-page="network"><span>03</span><b>激活</b><small>g(z) 掰弯</small></button>
+        <i>→</i>
+        <button data-page="network"><span>04</span><b>判决</b><small>ŷ ≥ 0.5 ?</small></button>
+        <i>→</i>
+        <button data-page="calculus"><span>05</span><b>反向试错</b><small>调 W, b</small></button>
+      </div>
+      <p class="pipeline-note">无论网络多复杂，永远都是这 5 步：输入 → 线性 → 非线性 → 判决 → 反向试错。</p>
+
       <div class="map-board card" id="mapBoard">
         <div class="map-board-head"><div><div class="card-kicker">THE LOOP</div><h2>一次训练，七个站点</h2></div><button class="text-btn" id="mapReplay">重新播放数据流</button></div>
         <div class="map-svg-wrap"><svg id="bigMap" viewBox="0 0 1200 520" role="img" aria-label="深度学习全局框架地图"></svg></div>
         <div class="map-note">点击任意站点，回到对应实验。<span id="mapHere">当前：数据 → 矩阵乘法</span></div>
+        <button class="cnn-branch" data-page="cnn">CNN 分支：卷积看边缘 → 零件 → 整车 →</button>
       </div>
 
       <div class="map-cards">
@@ -597,6 +703,61 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
       <div class="bottom-strip map-bottom">
         <div><b>一句话</b><span>前向传播算预测，反向传播算责任，优化器改参数。</span></div>
         <div><b>回到实验</b><button class="next-link" data-page="linear">从线性代数重新看一遍 →</button></div>
+      </div>
+    </section>
+    <!-- ================= PAGE 5 / CNN ================= -->
+    <section class="page" id="page-cnn">
+      <div class="page-head">
+        <div class="page-eyebrow"><span>05 / CONVOLUTION VISION</span><i>CNN / 特征图</i></div>
+        <h1>图片不是汽车，<br><em>是数字矩阵。</em></h1>
+        <p>计算机看到的不是“车”，而是一堆像素数字。拿一个 3×3 的放大镜在图上滑动，计算局部加权和，就得到了一张特征图。</p>
+        <div class="head-tags"><span class="pill blue">像素矩阵</span><span class="pill yellow">3×3 卷积核</span><span class="pill pink">特征图</span><span class="pill outline">边缘 → 零件 → 整车</span></div>
+      </div>
+
+      <div class="cnn-grid">
+        <div class="canvas-card">
+          <div class="canvas-top"><span>CONVOLUTION / SCAN</span><span id="cnnKernelName">竖边缘</span></div>
+          <div class="canvas-wrap cnn"><canvas id="cnnCanvas" aria-label="卷积扫描可视化"></canvas></div>
+          <div class="canvas-legend"><span><i class="dot blue"></i>输入像素</span><span><i class="dot pink"></i>高响应</span><span class="legend-hint">鼠标在图上移动 = 移动放大镜</span></div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="card control-card">
+            <div class="card-head"><div><div class="card-kicker">KERNEL / 放大镜</div><h2>3×3 权重</h2></div><span class="big-number" id="cnnResponse">0.00</span></div>
+            <div class="kernel-buttons">
+              <button data-kernel="vertical" class="active">竖边缘</button>
+              <button data-kernel="horizontal">横边缘</button>
+              <button data-kernel="diagonal">对角</button>
+              <button data-kernel="blur">模糊</button>
+            </div>
+            <div class="kernel-grid" id="cnnKernelGrid"></div>
+            <p class="formula-note">同一个卷积核在整张图上滑动，共享权重。这就是 CNN 比全连接省参数的原因。</p>
+          </div>
+
+          <div class="card formula-card">
+            <div class="card-kicker">CONVOLUTION</div>
+            <div class="math" id="cnnFormula"></div>
+            <p class="formula-note">卷积不是“找一个东西”，而是计算局部窗口和卷积核的加权和。权重由反向传播学出来。</p>
+          </div>
+
+          <div class="card insight-card pink-tint">
+            <div class="card-kicker">WHY NOT A PLANE?</div>
+            <h3>为什么它最后拼成汽车，不是飞机？</h3>
+            <p>一开始卷积核全是瞎猜的。如果拼错，输出“汽车概率”很低，Loss 很高；反向传播会修改卷积核，让能降低 Loss 的特征被保留下来。</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="cnn-lower">
+        <div class="card feature-card"><div class="card-kicker">LAYER 1 / EDGES</div><h3>先看边缘和线条</h3><canvas id="feature0"></canvas><p>第一层只认识竖线、横线、斜线。</p></div>
+        <div class="card feature-card"><div class="card-kicker">LAYER 2 / PARTS</div><h3>再拼成局部零件</h3><canvas id="feature1"></canvas><p>横线 + 竖线 = 车窗；圆弧 = 车轮。</p></div>
+        <div class="card feature-card"><div class="card-kicker">LAYER 3 / OBJECT</div><h3>最后拼成整车</h3><canvas id="feature2"></canvas><p>车轮、车窗、车身组合成“汽车”这个高级特征。</p></div>
+      </div>
+
+      <div class="bottom-strip">
+        <div><b>这一页的公式</b><span>(I * K)(i,j) = ΣΣ I(i+m, j+n) K(m,n)</span></div>
+        <div><b>你要观察</b><span>同一个核滑动 → 特征图 → 层级组合</span></div>
+        <div><b>下一步</b><button class="next-link" data-page="map">回到 5 步流水线 →</button></div>
       </div>
     </section>
   </main>
@@ -636,7 +797,8 @@ const PAGE_NODES = {
   linear: ['data', 'linear'],
   calculus: ['loss', 'gradient', 'update', 'loop'],
   network: ['linear', 'activation', 'loss'],
-  map: MAP_NODES.map(n => n.id)
+  map: MAP_NODES.map(n => n.id),
+  cnn: ['data', 'linear', 'activation', 'loss']
 };
 const state = { page: 'linear', active: new Set(PAGE_NODES.linear) };
 
@@ -722,9 +884,10 @@ function showPage(name) {
   setActiveNodes(PAGE_NODES[name], false);
   if (name === 'calculus') calc.pauseAuto();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  setTimeout(() => { resizeMatrix(); resizeCalc(); resizeNetwork(); resizeActivation(); }, 60);
+  setTimeout(() => { resizeMatrix(); resizeCalc(); resizeNetwork(); resizeActivation(); resizeCNN(); }, 60);
   if (name === 'network') renderNetworkSlow();
   if (name === 'calculus') renderCalcSlow();
+  if (name === 'cnn') { resizeCNN(); drawFeatureCanvases(); }
 }
 
 /* ------------------------------- KaTeX ------------------------------- */
@@ -744,6 +907,9 @@ function refreshAllMath() {
   updateMatrixFormula(true);
   updateCalcFormula(true);
   updateNetworkFormula(true);
+  tex($('#notationFormula'), `a_2^{[3]}=g\\!\\left(w_2^{[3]}\\cdot\\vec a^{[2]}+b_2^{[3]}\\right)`);
+  $$('.qmath').forEach(el => tex(el, el.dataset.tex, false));
+  tex($('#cnnFormula'), `(I*K)(i,j)=\\sum_{m=0}^{2}\\sum_{n=0}^{2}I(i+m,j+n)K(m,n)`);
 }
 
 /* =========================================================================
@@ -1542,18 +1708,26 @@ function initNetwork() {
   $$('#quizCard .quiz-options button').forEach(btn => btn.addEventListener('click', () => {
     const idx = Number(btn.dataset.quiz);
     if (net.quizAnswered) return;
-    net.quizAnswered = true;
     if (idx === 0) {
+      net.quizAnswered = true;
       btn.classList.add('correct');
-      $('#quizFeedback').textContent = '正确：上标 [3] 是层，下标 2 是这一层的第 2 个神经元。W[3] 的形状由第 3 层的神经元数和第 2 层的输出维数共同决定。';
+      $('#quizFeedback').textContent = '正确：等号左边算第 3 层第 2 个房间，右边必须用第 2 层的全部输出（向量 a⃗[2]），乘第 3 层第 2 个房间的权重，加偏置，再挤压。上一层的终点，就是下一层的起点。';
       glowNodes(['linear', 'activation']);
-      toast('维度直觉 +1');
+      toast('公式直觉 +1');
+    } else if (idx === 1) {
+      btn.classList.add('wrong');
+      net.flashUntil = performance.now() + 1000;
+      $('#quizFeedback').textContent = '错在 a⃗[3]：你正在算第 3 层的输出，怎么能把第 3 层自己当输入？应该用上一层 [2] 的向量 a⃗[2]。';
+      glowNodes(['linear', 'activation']);
+      setTimeout(() => btn.classList.remove('wrong'), 1100);
+      toast('不能拿还没算出的第 3 层当输入');
     } else {
       btn.classList.add('wrong');
-      net.flashUntil = performance.now() + 900;
-      $('#quizFeedback').textContent = '再看一眼：上标 [3] 是第 3 层，下标 2 是这一层的第 2 个神经元。红色连线正在提醒你层与神经元的区别。';
+      net.flashUntil = performance.now() + 1000;
+      $('#quizFeedback').textContent = '错在 a₂[2]：这只是一个标量，只代表第 2 层第 2 个神经元。全连接层要接收第 2 层所有神经元，必须用向量 a⃗[2]。';
       glowNodes(['linear', 'activation']);
-      toast('注意：上标是层，下标是神经元');
+      setTimeout(() => btn.classList.remove('wrong'), 1100);
+      toast('全连接：要用整个向量，不是一个数');
     }
   }));
   new ResizeObserver(() => { drawNetwork(); drawActivation(); }).observe(c.parentElement);
@@ -1596,6 +1770,7 @@ function init() {
   initMatrix();
   initCalc();
   initNetwork();
+  initCNN();
   $('#mapReplay')?.addEventListener('click', () => {
     setActiveNodes(PAGE_NODES.map, true);
     toast('数据流重新播放：数据 → 线性 → 激活 → Loss → 梯度 → 更新 → 循环');
@@ -1624,6 +1799,8 @@ function loop(now) {
   } else if (state.page === 'network') {
     drawNetwork();
     if (now % 50 < dt) drawActivation();
+  } else if (state.page === 'cnn') {
+    drawCNN();
   }
   requestAnimationFrame(loop);
 }
@@ -1636,6 +1813,213 @@ window.addEventListener('load', init);
 
 
 
+/* =========================================================================
+   MODULE 5 — CONVOLUTION VISION
+   ========================================================================= */
+const CNN = {
+  size: 16, image: [], kernel: 'vertical', pos: { i: 7, j: 7 }, auto: true, lastPointer: 0,
+  ctx: null, canvas: null, response: 0, out: []
+};
+const KERNELS = {
+  vertical: { name: '竖边缘', k: [[1, 0, -1], [1, 0, -1], [1, 0, -1]] },
+  horizontal: { name: '横边缘', k: [[1, 1, 1], [0, 0, 0], [-1, -1, -1]] },
+  diagonal: { name: '对角', k: [[0, 1, 1], [-1, 0, 1], [-1, -1, 0]] },
+  blur: { name: '模糊', k: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] }
+};
+
+function buildCarImage() {
+  const n = CNN.size;
+  const a = Array.from({ length: n }, () => Array(n).fill(.12));
+  const rect = (x, y, w, h, v) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (j >= 0 && j < n && i >= 0 && i < n) a[j][i] = v; };
+  // 车身、车顶、车窗、车轮、地面
+  rect(2, 8, 12, 4, .78);
+  rect(5, 5, 6, 3, .86);
+  rect(6, 6, 2, 2, .28);
+  rect(9, 6, 2, 2, .28);
+  rect(2, 11, 12, 1, .62);
+  const wheel = (cx, cy, r, hub) => {
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const d = Math.hypot(i - cx, j - cy);
+      if (d < r) a[j][i] = .18;
+      if (d < hub) a[j][i] = .85;
+    }
+  };
+  wheel(4, 12.2, 1.7, .7);
+  wheel(12, 12.2, 1.7, .7);
+  for (let i = 0; i < n; i++) a[15][i] = .42;
+  // 车灯 / 细节
+  rect(2, 9, 1, 1, .96); rect(13, 9, 1, 1, .96);
+  CNN.image = a;
+}
+
+function convAt(i, j, k) {
+  let s = 0;
+  for (let m = 0; m < 3; m++) for (let n = 0; n < 3; n++) s += CNN.image[j + n][i + m] * k[n][m];
+  return s;
+}
+function buildConvOutput() {
+  const k = KERNELS[CNN.kernel].k;
+  const out = Array.from({ length: CNN.size - 2 }, () => Array(CNN.size - 2).fill(0));
+  let max = .001;
+  for (let j = 0; j < CNN.size - 2; j++) for (let i = 0; i < CNN.size - 2; i++) {
+    const v = convAt(i, j, k); out[j][i] = v; max = Math.max(max, Math.abs(v));
+  }
+  for (let j = 0; j < out.length; j++) for (let i = 0; i < out.length; i++) out[j][i] /= max;
+  CNN.out = out;
+  return out;
+}
+
+function drawCellGrid(ctx, x, y, cell, size, values, signed = false) {
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const v = values[j][i];
+    if (signed) {
+      const u = Math.max(-1, Math.min(1, v));
+      ctx.fillStyle = u >= 0 ? `rgba(76,127,196,${.1 + u * .75})` : `rgba(199,91,91,${.1 + Math.abs(u) * .7})`;
+    } else {
+      ctx.fillStyle = `rgba(39,50,58,${.08 + v * .82})`;
+    }
+    ctx.fillRect(x + i * cell, y + j * cell, cell, cell);
+    ctx.strokeStyle = 'rgba(249,246,240,.42)'; ctx.lineWidth = .6;
+    ctx.strokeRect(x + i * cell, y + j * cell, cell, cell);
+  }
+}
+
+function drawCNN() {
+  const canvas = CNN.canvas, ctx = CNN.ctx;
+  if (!canvas || !ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(39,50,58,.06)';
+  for (let x = 14; x < w; x += 24) for (let y = 14; y < h; y += 24) ctx.fillRect(x, y, 1.1, 1.1);
+
+  if (CNN.auto && performance.now() - CNN.lastPointer > 1800) {
+    const t = performance.now() / 900;
+    CNN.pos.i = 1 + Math.floor((Math.sin(t) * .5 + .5) * (CNN.size - 3));
+    CNN.pos.j = 1 + Math.floor((Math.sin(t * .72 + 1.2) * .5 + .5) * (CNN.size - 3));
+  }
+  CNN.pos.i = clamp(CNN.pos.i, 1, CNN.size - 3);
+  CNN.pos.j = clamp(CNN.pos.j, 1, CNN.size - 3);
+
+  const out = buildConvOutput();
+  const maxCell = Math.min(24, (w * .5 - 90) / CNN.size);
+  const cell = Math.max(12, maxCell);
+  const imgX = 34, imgY = 64;
+  const outCell = Math.max(10, Math.min(19, (w * .38 - 40) / (CNN.size - 2)));
+  const outX = imgX + CNN.size * cell + 54, outY = 64;
+
+  ctx.fillStyle = 'rgba(39,50,58,.72)'; ctx.font = '600 12px "Cascadia Code", monospace';
+  ctx.fillText('输入：16 × 16 像素矩阵', imgX, 38);
+  ctx.fillText('特征图：14 × 14', outX, 38);
+  drawCellGrid(ctx, imgX, imgY, cell, CNN.size, CNN.image, false);
+  drawCellGrid(ctx, outX, outY, outCell, CNN.size - 2, out, true);
+
+  // 3x3 window
+  ctx.fillStyle = 'rgba(255,173,173,.16)';
+  ctx.fillRect(imgX + CNN.pos.i * cell, imgY + CNN.pos.j * cell, cell * 3, cell * 3);
+  ctx.strokeStyle = '#C75B5B'; ctx.lineWidth = 3;
+  ctx.strokeRect(imgX + CNN.pos.i * cell, imgY + CNN.pos.j * cell, cell * 3, cell * 3);
+  // output selected cell
+  const oi = CNN.pos.i - 1, oj = CNN.pos.j - 1;
+  ctx.strokeStyle = '#27323A'; ctx.lineWidth = 2.5;
+  ctx.strokeRect(outX + oi * outCell, outY + oj * outCell, outCell, outCell);
+  ctx.fillStyle = 'rgba(39,50,58,.68)'; ctx.font = '600 11px "Cascadia Code", monospace';
+  ctx.fillText(`窗口 i=${CNN.pos.i}, j=${CNN.pos.j}`, imgX, imgY + CNN.size * cell + 24);
+  ctx.fillText('蓝 = 正响应 / 粉 = 负响应', outX, outY + (CNN.size - 2) * outCell + 24);
+
+  CNN.response = out[oj][oi];
+  const resp = $('#cnnResponse'); if (resp) resp.textContent = fmt(CNN.response, 2);
+}
+
+function drawFeatureCanvas(canvas, type) {
+  if (!canvas) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, rect.width, rect.height);
+  const n = CNN.size;
+  const cell = Math.min(rect.width / n, rect.height / n);
+  const ox = (rect.width - cell * n) / 2, oy = (rect.height - cell * n) / 2;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    let v = 0;
+    if (type === 'edges') {
+      const gx = Math.abs(CNN.image[j][Math.min(n - 1, i + 1)] - CNN.image[j][Math.max(0, i - 1)]);
+      const gy = Math.abs(CNN.image[Math.min(n - 1, j + 1)][i] - CNN.image[Math.max(0, j - 1)][i]);
+      v = Math.min(1, (gx + gy) * 3.2);
+    } else if (type === 'parts') {
+      const wheel = Math.min(Math.hypot(i - 4, j - 12.2), Math.hypot(i - 12, j - 12.2)) < 2.2;
+      const window = i >= 5 && i <= 10 && j >= 5 && j <= 8;
+      v = wheel || window ? .82 : (CNN.image[j][i] > .6 ? .2 : .05);
+    } else {
+      v = CNN.image[j][i];
+    }
+    ctx.fillStyle = type === 'edges' ? `rgba(76,127,196,${.06 + v * .88})` : type === 'parts' ? `rgba(180,154,36,${.06 + v * .85})` : `rgba(199,91,91,${.06 + v * .82})`;
+    ctx.fillRect(ox + i * cell, oy + j * cell, cell, cell);
+    ctx.strokeStyle = 'rgba(249,246,240,.35)'; ctx.lineWidth = .5; ctx.strokeRect(ox + i * cell, oy + j * cell, cell, cell);
+  }
+}
+
+function drawFeatureCanvases() {
+  drawFeatureCanvas($('#feature0'), 'edges');
+  drawFeatureCanvas($('#feature1'), 'parts');
+  drawFeatureCanvas($('#feature2'), 'object');
+}
+
+function renderKernelGrid() {
+  const grid = $('#cnnKernelGrid'); if (!grid) return;
+  const k = KERNELS[CNN.kernel].k;
+  grid.innerHTML = k.flat().map(v => `<div class="kernel-cell ${v < 0 ? 'neg' : ''}">${v > 0 ? '+' : ''}${v}</div>`).join('');
+  const name = $('#cnnKernelName'); if (name) name.textContent = KERNELS[CNN.kernel].name;
+}
+
+function initCNN() {
+  const c = $('#cnnCanvas'); if (!c) return;
+  CNN.canvas = c; CNN.ctx = c.getContext('2d');
+  buildCarImage();
+  renderKernelGrid();
+  $$('.kernel-buttons button').forEach(b => b.addEventListener('click', () => {
+    CNN.kernel = b.dataset.kernel;
+    $$('.kernel-buttons button').forEach(x => x.classList.toggle('active', x === b));
+    renderKernelGrid(); glowNodes(['data', 'linear', 'activation']); drawCNN();
+  }));
+  c.addEventListener('pointermove', e => {
+    const rect = c.getBoundingClientRect();
+    const w = rect.width;
+    const cell = Math.max(12, Math.min(24, (w * .5 - 90) / CNN.size));
+    const i = Math.floor((e.clientX - rect.left - 34) / cell);
+    const j = Math.floor((e.clientY - rect.top - 64) / cell);
+    if (i >= 0 && j >= 0 && i < CNN.size && j < CNN.size) {
+      CNN.pos.i = clamp(i, 1, CNN.size - 3); CNN.pos.j = clamp(j, 1, CNN.size - 3);
+      CNN.auto = false; CNN.lastPointer = performance.now();
+      glowNodes(['data', 'linear']);
+    }
+  });
+  c.addEventListener('pointerleave', () => { CNN.auto = true; CNN.lastPointer = 0; });
+  new ResizeObserver(() => { drawCNN(); drawFeatureCanvases(); }).observe(c.parentElement);
+  drawCNN(); drawFeatureCanvases();
+}
+
+function resizeCNN() {
+  const c = $('#cnnCanvas'); if (!c) return;
+  CNN.canvas = c; CNN.ctx = c.getContext('2d');
+  drawCNN(); drawFeatureCanvases();
+}
+
 </script>
 </body>
 </html>
+
+
