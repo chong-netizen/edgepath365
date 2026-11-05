@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F7F3EA">
+  <title>反向传播实验室 · 把误差拆成责任</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+/* ==========================================================================
+   反向传播实验室 — warm paper + dark signal canvas
+   ========================================================================== */
+
+:root{
+  --bg:#F7F3EA;
+  --paper:#FFFDF8;
+  --paper-2:#FBF6EB;
+  --ink:#1D2732;
+  --ink-2:#34414D;
+  --muted:#6E7A84;
+  --faint:#9AA4AC;
+  --blue:#3B82F6;
+  --blue-soft:#A9C8FF;
+  --orange:#FF8A4C;
+  --orange-soft:#FFD0AD;
+  --pink:#F472B6;
+  --green:#36B37E;
+  --green-soft:#C7F0DE;
+  --canvas:#0B1220;
+  --line:rgba(29,39,50,.13);
+  --line-strong:rgba(29,39,50,.22);
+  --shadow:0 20px 60px rgba(60,48,30,.1),0 2px 8px rgba(60,48,30,.05);
+  --radius:20px;
+  --sans:"Bahnschrift","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Bahnschrift Condensed","Bahnschrift","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --mono:"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  --max:1560px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4,p{margin:0}
+::selection{background:var(--orange-soft);color:var(--ink)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#EFE9DC}
+::-webkit-scrollbar-thumb{background:#C7D4E3;border-radius:8px;border:2px solid #EFE9DC}
+::-webkit-scrollbar-thumb:hover{background:var(--blue-soft)}
+
+.paper-noise{position:fixed;inset:0;z-index:-3;pointer-events:none;opacity:.55;background-image:radial-gradient(rgba(29,39,50,.12) .55px,transparent .55px);background-size:20px 20px;mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.55) 55%,transparent)}
+.color-wash{position:fixed;z-index:-2;border-radius:50%;filter:blur(2px);pointer-events:none;opacity:.45}
+.wash-a{width:620px;height:620px;left:-240px;top:-80px;background:radial-gradient(circle,rgba(169,200,255,.6),transparent 68%)}
+.wash-b{width:560px;height:560px;right:-200px;top:600px;background:radial-gradient(circle,rgba(255,208,173,.5),transparent 68%)}
+
+/* topbar */
+.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;
+  padding:11px max(26px,calc((100vw - var(--max))/2));min-height:76px;
+  background:rgba(247,243,234,.9);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.brand-mark{width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:var(--ink);color:#FFFDF8;font-family:var(--mono);font-size:23px;box-shadow:0 4px 0 rgba(29,39,50,.18)}
+.brand strong{display:block;font-family:var(--display);font-size:22px;line-height:1;letter-spacing:.02em}
+.brand small{display:block;margin-top:4px;font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--muted)}
+.nav{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,253,248,.7)}
+.nav a{padding:7px 12px;border-radius:8px;font-size:14px;color:var(--muted);transition:.2s;white-space:nowrap}
+.nav a:hover{color:var(--ink);background:var(--orange-soft)}
+.top-badge{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+.top-badge b{color:var(--ink);font-weight:500}
+.top-badge i{font-style:normal;color:var(--faint);border-left:1px solid var(--line);padding-left:8px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(255,138,76,.18);animation:live 2s infinite}
+@keyframes live{0%,100%{transform:scale(.9);opacity:.7}50%{transform:scale(1.15);opacity:1}}
+
+/* hero */
+main{max-width:var(--max);margin:0 auto;padding:0 26px}
+.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:54px;align-items:center;padding:66px 0 54px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--blue)}
+.hero h1{margin:16px 0 18px;font-family:var(--display);font-size:clamp(48px,6.2vw,92px);line-height:.95;letter-spacing:-.04em;font-weight:700}
+.hero h1 em{font-style:normal;color:var(--orange);position:relative;white-space:nowrap}
+.hero h1 em::after{content:"";position:absolute;left:0;right:0;bottom:5px;height:14px;background:rgba(255,208,173,.65);z-index:-1;border-radius:3px;transform:rotate(-.7deg)}
+.hero-copy > p{max-width:760px;font-size:20px;line-height:1.7;color:var(--ink-2)}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 18px;border:1px solid var(--line-strong);border-radius:11px;font-size:14px;font-weight:600;transition:.18s;background:var(--paper);white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 0 rgba(35,70,140,.2)}
+.btn.primary:hover{background:#2f72e0}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#FFFDF8}
+.btn.dark:hover{background:#2a3744}
+.btn.ghost{background:rgba(255,253,248,.65)}
+.btn.ghost:hover{background:var(--orange-soft)}
+.btn.wide{width:100%}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap;margin-top:34px;padding-top:20px;border-top:1px solid var(--line)}
+.hero-stats div{display:flex;flex-direction:column;gap:1px}
+.hero-stats strong{font-family:var(--display);font-size:32px;line-height:1;letter-spacing:-.03em}
+.hero-stats span{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.08em}
+.hero-figure{position:relative;background:var(--canvas);border-radius:26px;padding:26px;box-shadow:0 30px 70px rgba(10,18,32,.22);overflow:hidden}
+.hero-figure::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 60% 35%,rgba(59,130,246,.22),transparent 55%),radial-gradient(circle at 25% 85%,rgba(255,138,76,.14),transparent 55%)}
+.hero-net{position:relative;display:flex;align-items:center;justify-content:space-between;height:230px;z-index:1}
+.hn-layer{display:flex;flex-direction:column;justify-content:center;gap:60px;z-index:2}
+.hn-node{display:block;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.45);background:rgba(255,255,255,.06);box-shadow:0 0 24px rgba(59,130,246,.25)}
+.hn-node.in{border-color:var(--blue-soft);box-shadow:0 0 24px rgba(59,130,246,.55)}
+.hn-node.hid{border-color:#FFD166;box-shadow:0 0 24px rgba(255,209,102,.4)}
+.hn-node.out{border-color:var(--pink);box-shadow:0 0 24px rgba(244,114,182,.45)}
+.hn-edges{position:absolute;left:12%;right:12%;top:0;bottom:0;z-index:0}
+.hn-edges span{position:absolute;left:0;right:33%;height:1px;background:linear-gradient(90deg,rgba(169,200,255,.1),rgba(169,200,255,.7),rgba(169,200,255,.1));transform-origin:left}
+.hn-edges span:nth-child(1){top:30%;transform:rotate(16deg)}
+.hn-edges span:nth-child(2){top:30%;transform:rotate(-12deg)}
+.hn-edges span:nth-child(3){top:65%;transform:rotate(-16deg)}
+.hn-edges span:nth-child(4){top:65%;transform:rotate(12deg)}
+.hn-edges.out span{left:33%;right:18%;background:linear-gradient(90deg,rgba(255,209,102,.15),rgba(244,114,182,.75))}
+.hero-caption{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:18px;border-top:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.62)}
+.hero-caption span{color:var(--orange-soft)}
+
+/* sections */
+.section{padding:52px 0 12px;border-bottom:1px solid var(--line)}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:22px}
+.section-head h2{font-family:var(--display);font-size:clamp(34px,4.1vw,56px);line-height:1;letter-spacing:-.035em;margin:7px 0 8px}
+.section-head p{max-width:880px;font-size:15px;line-height:1.7;color:var(--muted)}
+.stage-badge{flex:0 0 auto;padding:8px 12px;border:1px solid var(--line-strong);border-radius:9px;font-family:var(--mono);font-size:10px;color:var(--blue);background:rgba(255,253,248,.7);white-space:nowrap}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel-title{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 17px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:9px;color:var(--muted)}
+.panel-title b{font-weight:500;color:var(--ink);font-size:12px}
+
+/* lab */
+.lab-shell{display:grid;grid-template-columns:260px minmax(0,1fr) 340px;gap:16px;align-items:start}
+.controls{padding:0 16px 16px}
+.controls .panel-title{margin:0 -16px 12px}
+.slider-row{display:grid;grid-template-columns:38px 1fr 48px;align-items:center;gap:8px;margin:9px 0;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.slider-row b{text-align:right;font-weight:500;color:var(--ink)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:4px;background:#E5DED0;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);border:2px solid var(--paper);box-shadow:0 1px 0 rgba(29,39,50,.25);cursor:grab}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--blue);border:2px solid var(--paper);box-shadow:0 1px 0 rgba(29,39,50,.25);cursor:grab}
+.control-block{margin:13px 0}
+.control-label{display:block;font-family:var(--mono);font-size:9px;color:var(--faint);margin-bottom:5px;letter-spacing:.05em}
+.seg{display:flex;gap:4px;padding:3px;border-radius:9px;background:#EFE8DA}
+.seg button{flex:1;padding:7px;border-radius:6px;font-size:12px;color:var(--muted);transition:.2s}
+.seg button.active{background:var(--orange);color:var(--ink);box-shadow:0 2px 0 rgba(29,39,50,.12)}
+.control-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px}
+.control-actions .wide{grid-column:1/-1}
+.control-actions .btn{padding:9px 8px;font-size:11px;border-radius:8px}
+.mini-note{margin-top:12px;padding:9px 10px;border-radius:8px;background:#F5EFE2;font-size:10px;line-height:1.55;color:var(--muted)}
+.mini-note b{color:var(--ink);display:block;margin-bottom:2px;font-family:var(--mono);font-size:9px}
+
+.network-panel{overflow:hidden;min-width:0}
+.network-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:15px 18px 12px;border-bottom:1px solid var(--line)}
+.card-kicker{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--blue)}
+.network-head h3{margin-top:4px;font-family:var(--display);font-size:24px;line-height:1.05;letter-spacing:-.02em}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.blue{background:var(--blue)}
+.dot.orange{background:var(--orange)}
+.dot.pink{background:var(--pink)}
+.dot.green{background:var(--green)}
+.network-canvas-wrap{position:relative;height:590px;background:var(--canvas);overflow:hidden}
+.network-canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none}
+.canvas-hint{position:absolute;left:14px;bottom:11px;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35);pointer-events:none}
+.node-tip{position:absolute;z-index:4;max-width:260px;padding:9px 11px;border:1px solid rgba(255,255,255,.2);border-radius:9px;background:rgba(9,16,28,.94);color:#EAF2FF;font-family:var(--mono);font-size:10px;line-height:1.55;pointer-events:none;opacity:0;transform:translateY(5px);transition:.15s}
+.node-tip.show{opacity:1;transform:none}
+.node-tip b{color:var(--orange-soft);font-weight:500}
+.network-foot{display:flex;justify-content:space-between;gap:10px;padding:9px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9px;color:var(--faint)}
+.network-foot span:first-child{color:var(--blue)}
+
+.stage-panel{padding-bottom:12px;min-width:0}
+.stage-panel .panel-title{margin-bottom:0}
+.stage-list{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:10px 12px;border-bottom:1px solid var(--line);max-height:210px;overflow:auto}
+.stage-pill{text-align:left;padding:7px 8px;border:1px solid transparent;border-radius:7px;font-size:10px;color:var(--muted);transition:.2s;line-height:1.3}
+.stage-pill span{display:block;font-family:var(--mono);font-size:8px;color:var(--faint)}
+.stage-pill:hover{background:#F5EFE2;color:var(--ink)}
+.stage-pill.active{background:var(--orange-soft);border-color:rgba(255,138,76,.35);color:var(--ink)}
+.stage-pill.done{color:var(--ink)}
+.stage-pill.done span{color:var(--green)}
+.stage-card{padding:16px}
+.stage-kicker{font-family:var(--mono);font-size:9px;color:var(--orange);letter-spacing:.1em}
+.stage-card h3{margin:5px 0 8px;font-family:var(--display);font-size:25px;line-height:1.05;letter-spacing:-.02em}
+.stage-card p{font-size:12px;line-height:1.65;color:var(--muted);margin-top:9px}
+.stage-code{margin-top:11px;padding:8px 10px;border-radius:7px;background:#1D2732;color:#FFD0AD;font:10px/1.5 var(--mono);overflow-x:auto;white-space:pre}
+.stage-nav{display:flex;gap:6px;padding:0 12px}
+.stage-nav button{flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;font-size:11px;color:var(--muted);background:var(--paper-2)}
+.stage-nav button:hover{background:var(--orange-soft);color:var(--ink)}
+.math{overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.math .katex{font-size:1em;color:var(--ink)}
+
+/* graph */
+.graph-section{padding-top:50px}
+.graph-board{padding:18px 20px 12px;background:linear-gradient(180deg,#FFFDF8,#FBF6EA)}
+.graph-row{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:3px 0 8px}
+.cg-node{flex:1;min-width:118px;padding:12px 11px;border:1px solid var(--line);border-radius:12px;background:var(--paper);transition:.22s;text-align:left}
+.cg-node span{display:block;font-family:var(--mono);font-size:9px;color:var(--blue)}
+.cg-node b{display:block;font-family:var(--display);font-size:20px;margin-top:2px;line-height:1}
+.cg-node small{display:block;font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cg-node .delta{display:block;margin-top:5px;font-family:var(--mono);font-size:9px;color:var(--orange)}
+.cg-node.active{border-color:var(--orange);background:#FFF4EC;box-shadow:0 0 0 3px rgba(255,138,76,.12)}
+.cg-node.loss{border-color:rgba(244,114,182,.45)}
+.cg-arrow{flex:0 0 22px;display:grid;place-items:center;font-family:var(--mono);color:var(--faint);font-size:15px}
+.graph-note{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:9px;color:var(--faint);border-top:1px solid var(--line);padding-top:9px}
+.lower-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-top:16px}
+.grad-panel{padding:0 17px 14px}
+.grad-panel .panel-title{margin:0 -17px 10px}
+.grad-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-bottom:8px}
+.grad-legend span{display:flex;align-items:center;gap:5px}
+.grad-bars{display:flex;flex-direction:column;gap:5px}
+.grad-row{display:grid;grid-template-columns:78px 1fr 58px;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+.grad-row b{font-weight:500;color:var(--ink);text-align:right}
+.grad-track{height:9px;border-radius:4px;background:#F0E9DC;overflow:hidden;position:relative}
+.grad-fill{position:absolute;top:0;bottom:0;left:50%;width:0;background:var(--orange);transition:width .25s,left .25s}
+.grad-fill.neg{background:var(--blue)}
+.grad-row.active{color:var(--ink)}
+.grad-row.active .grad-track{outline:2px solid rgba(255,138,76,.25)}
+.insight-panel{padding:22px}
+.insight-panel h3{font-family:var(--display);font-size:27px;line-height:1.08;margin:5px 0 9px}
+.insight-panel p{font-size:13px;line-height:1.65;color:var(--muted)}
+.insight-panel p.small{font-size:11.5px;color:var(--faint);margin-top:8px}
+.formula-line{margin-top:12px;padding:8px 10px;border-radius:7px;background:#F5EFE2;overflow-x:auto}
+
+/* math */
+.math-section{padding-top:50px}
+.math-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.formula-card{padding:19px}
+.formula-card h3{font-family:var(--display);font-size:24px;margin:4px 0 4px}
+.formula-card .math{font-size:17px;min-height:54px;padding:5px 0}
+.formula-card p{font-size:12px;line-height:1.6;color:var(--muted);margin-top:6px}
+.live-card{padding:19px;background:linear-gradient(180deg,#FFF6ED,#FFFDF8);border-color:rgba(255,138,76,.25)}
+.live-card .math{font-size:18px;min-height:72px}
+.live-note{font-size:12px!important;color:var(--ink-2)!important}
+.live-card .katex{color:var(--ink)}
+
+/* code */
+.code-section{padding-top:50px}
+.code-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:16px;align-items:start}
+.code-panel{padding:0;overflow:hidden;background:#111A27;border-color:rgba(255,255,255,.1)}
+.code-head{display:flex;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.45)}
+.code-head b{color:#FFD0AD;font-weight:400}
+.code-scroll{max-height:630px;overflow:auto}
+#codeBlock{margin:0;padding:16px 0;font:13px/1.75 var(--mono);color:#DCE7F5;white-space:pre;counter-reset:line}
+.code-line{display:block;padding:0 18px 0 54px;position:relative;min-height:23px}
+.code-line::before{counter-increment:line;content:counter(line);position:absolute;left:14px;width:26px;text-align:right;color:rgba(255,255,255,.24);font-size:10px}
+.code-line.hi{background:rgba(255,138,76,.14);box-shadow:inset 3px 0 0 var(--orange)}
+.code-line .c{color:#6D8098;font-style:italic}
+.code-line .k{color:#A9C8FF}
+.code-line .s{color:#C7F0DE}
+.code-line .f{color:#FFD0AD}
+.code-line .n{color:#F7B7D2}
+.code-foot{display:flex;justify-content:space-between;gap:10px;padding:9px 16px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35)}
+.code-notes{display:flex;flex-direction:column;gap:12px}
+.note-card{padding:17px}
+.note-card h3{font-family:var(--display);font-size:22px;line-height:1.1;margin:4px 0 5px}
+.note-card p{font-size:12px;line-height:1.6;color:var(--muted)}
+.note-card b{color:var(--ink)}
+
+/* train */
+.train-section{padding-top:50px;padding-bottom:40px;border-bottom:0}
+.train-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+.loss-panel{padding:0 0 12px}
+.loss-panel .panel-title{margin-bottom:0}
+.loss-canvas-wrap{height:300px;background:#FFFCF5;border-bottom:1px solid var(--line)}
+.loss-canvas-wrap canvas{width:100%;height:100%;display:block}
+.loss-stats{display:flex;gap:28px;padding:12px 18px 2px;flex-wrap:wrap}
+.loss-stats div{display:flex;flex-direction:column;gap:1px}
+.loss-stats span{font-family:var(--mono);font-size:9px;color:var(--faint)}
+.loss-stats b{font-family:var(--display);font-size:22px;line-height:1}
+.train-controls{padding:22px}
+.train-controls h3{font-family:var(--display);font-size:28px;margin:5px 0 6px}
+.train-controls p{font-size:13px;line-height:1.65;color:var(--muted)}
+.button-stack{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:16px 0 12px}
+.button-stack .btn{grid-column:1/-1}
+.button-stack .btn:nth-child(1),.button-stack .btn:nth-child(2){grid-column:auto}
+.train-note{font-size:11px;line-height:1.6;color:var(--faint);padding:9px 10px;background:#F5EFE2;border-radius:8px}
+.param-table{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:13px}
+.param-cell{display:flex;justify-content:space-between;gap:5px;padding:5px 7px;background:#FBF6EB;border-radius:6px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+.param-cell b{font-weight:500;color:var(--ink)}
+
+/* footer/toast */
+.footer{max-width:var(--max);margin:0 auto;padding:22px 26px 30px;display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:9px;color:var(--faint)}
+.toast{position:fixed;right:26px;bottom:26px;z-index:100;padding:10px 14px;border-radius:10px;background:var(--ink);color:#FFFDF8;font-size:12px;box-shadow:0 14px 35px rgba(29,39,50,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;max-width:80vw}
+.toast.show{opacity:1;transform:none}
+.empty3d{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px}
+
+/* responsive */
+@media(max-width:1240px){
+  .lab-shell{grid-template-columns:240px minmax(0,1fr) 310px}
+  .network-canvas-wrap{height:520px}
+  .network-head h3{font-size:21px}
+  .hero{gap:30px}
+  .hero h1{font-size:clamp(46px,6.5vw,74px)}
+}
+@media(max-width:1080px){
+  .topbar{flex-wrap:wrap;gap:10px;padding:10px 20px}
+  .nav{order:3;width:100%;overflow-x:auto}
+  .top-badge{display:none}
+  .hero{grid-template-columns:1fr;padding-top:44px}
+  .hero-figure{max-width:640px}
+  .lab-shell{grid-template-columns:230px minmax(0,1fr)}
+  .stage-panel{grid-column:1/-1}
+  .stage-panel .stage-list{grid-template-columns:repeat(4,1fr);max-height:none}
+  .stage-card{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+  .stage-card h3{grid-column:1/-1}
+  .stage-card .math{grid-column:1}
+  .stage-card p{grid-column:2;margin-top:0}
+  .stage-code{grid-column:1/-1;margin-top:0}
+  .math-grid{grid-template-columns:1fr 1fr}
+  .code-layout{grid-template-columns:1fr}
+  .train-grid{grid-template-columns:1fr}
+  .lower-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  body{font-size:16px}
+  .topbar{min-height:62px;padding:8px 13px}
+  .brand-mark{width:37px;height:37px;font-size:20px}
+  .brand strong{font-size:18px}
+  .brand small{display:none}
+  main{padding:0 13px}
+  .hero{padding:30px 0 34px}
+  .hero h1{font-size:clamp(38px,10.5vw,50px);line-height:1}
+  .hero h1 em{white-space:normal}
+  .hero-copy > p{font-size:16px}
+  .hero-actions .btn{flex:1}
+  .hero-stats{gap:18px}
+  .hero-stats strong{font-size:26px}
+  .hero-figure{display:none}
+  .section{padding-top:34px}
+  .section-head{display:block}
+  .section-head h2{font-size:34px}
+  .section-head p{font-size:14px}
+  .stage-badge{display:inline-block;margin-top:10px}
+  .lab-shell{grid-template-columns:1fr}
+  .controls{order:2}
+  .network-panel{order:1}
+  .stage-panel{order:3}
+  .network-canvas-wrap{height:430px}
+  .stage-card{display:block}
+  .stage-card p{margin-top:9px}
+  .stage-list{grid-template-columns:1fr 1fr}
+  .math-grid,.graph-row{grid-template-columns:1fr}
+  .graph-row{display:grid;gap:5px}
+  .cg-arrow{height:16px}
+  .cg-node{min-width:0}
+  .math-grid{grid-template-columns:1fr}
+  .button-stack{grid-template-columns:1fr}
+  .button-stack .btn{grid-column:1/-1}
+  .footer{display:block;line-height:1.8;padding:16px 13px 24px}
+  .code-line{font-size:11px;padding-left:46px}
+  #codeBlock{font-size:11px}
+  .loss-canvas-wrap{height:240px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+</style>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+</head>
+<body>
+  <div class="paper-noise" aria-hidden="true"></div>
+  <div class="color-wash wash-a" aria-hidden="true"></div>
+  <div class="color-wash wash-b" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#top"><span class="brand-mark">∂</span><span><strong>反向传播实验室</strong><small>BACKPROP / INTUITION LAB</small></span></a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#lab">实验台</a>
+      <a href="#graph">计算图</a>
+      <a href="#math">数学</a>
+      <a href="#code">PyTorch</a>
+      <a href="#train">训练</a>
+    </nav>
+    <div class="top-badge"><span class="pulse"></span><b>AUTOGRAD</b><i>2-2-1 · LIVE</i></div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">DEEP LEARNING / BACKPROPAGATION</div>
+        <h1>梯度不是魔法，<br><em>是责任的分摊。</em></h1>
+        <p>前向传播算出一个预测，Loss 说“错了多少”；反向传播把这份错误，按权重和导数一层层拆回每个参数。下面这台实验台，把这条“责任链”完整拆开。</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#lab">进入反向传播实验台 →</a>
+          <a class="btn ghost" href="#code">直接看 PyTorch 对照</a>
+        </div>
+        <div class="hero-stats">
+          <div><strong>2-2-1</strong><span>网络结构</span></div>
+          <div><strong>9</strong><span>可训练参数</span></div>
+          <div><strong>6</strong><span>反向传播阶段</span></div>
+          <div><strong>1</strong><span>链式法则</span></div>
+        </div>
+      </div>
+      <div class="hero-figure">
+        <div class="hero-net">
+          <div class="hn-layer"><i class="hn-node in"></i><i class="hn-node in"></i></div>
+          <div class="hn-edges"><span></span><span></span><span></span><span></span></div>
+          <div class="hn-layer"><i class="hn-node hid"></i><i class="hn-node hid"></i></div>
+          <div class="hn-edges out"><span></span><span></span></div>
+          <div class="hn-layer"><i class="hn-node out"></i></div>
+        </div>
+        <div class="hero-caption"><span>∂L/∂W</span><b>误差反着走，参数正着改</b></div>
+      </div>
+    </section>
+
+    <section class="section lab-section" id="lab">
+      <div class="section-head">
+        <div><div class="eyebrow">01 / INTERACTIVE BENCH</div><h2>把一次反向传播，拆成 6 步</h2><p>先点“前向传播”看数值，再点“反向一步”。每一步只亮起当前该看的地方，避免一次性被公式淹没。</p></div>
+        <div class="stage-badge" id="stageBadge">STAGE 00 / FORWARD</div>
+      </div>
+
+      <div class="lab-shell">
+        <aside class="panel controls">
+          <div class="panel-title"><span>INPUTS</span><b>实验旋钮</b></div>
+          <label class="slider-row"><span>x₁</span><input id="x1" type="range" min="-2" max="2" step="0.05" value="0.8"><b id="x1v">0.80</b></label>
+          <label class="slider-row"><span>x₂</span><input id="x2" type="range" min="-2" max="2" step="0.05" value="-0.35"><b id="x2v">-0.35</b></label>
+          <div class="control-block">
+            <span class="control-label">真实标签 y</span>
+            <div class="seg"><button class="active" data-y="1">y = 1</button><button data-y="0">y = 0</button></div>
+          </div>
+          <label class="slider-row"><span>η</span><input id="lr" type="range" min="0.01" max="1.5" step="0.01" value="0.35"><b id="lrv">0.35</b></label>
+          <div class="control-actions">
+            <button class="btn primary wide" id="forwardBtn">前向传播</button>
+            <button class="btn dark wide" id="backBtn">反向一步 →</button>
+            <button class="btn ghost wide" id="autoBtn">自动播放 6 步</button>
+            <button class="btn ghost" id="randomBtn">随机权重</button>
+            <button class="btn ghost" id="resetBtn">重置全部</button>
+          </div>
+          <div class="mini-note"><b>提示</b><span>点网络里的节点，可查看它的值和局部导数。</span></div>
+        </aside>
+
+        <div class="panel network-panel">
+          <div class="network-head">
+            <div><span class="card-kicker">NETWORK / 2-2-1</span><h3>前向与反向，在同一条图上</h3></div>
+            <div class="legend"><span><i class="dot blue"></i>前向</span><span><i class="dot orange"></i>反向</span><span><i class="dot pink"></i>高梯度</span></div>
+          </div>
+          <div class="network-canvas-wrap">
+            <canvas id="networkCanvas" aria-label="前向与反向传播网络图"></canvas>
+            <div class="node-tip" id="nodeTip"></div>
+            <div class="canvas-hint">悬停节点看数值 · 点击节点看局部导数</div>
+          </div>
+          <div class="network-foot"><span id="netState">FORWARD READY</span><span>激活：Sigmoid · 损失：Binary Cross Entropy</span></div>
+        </div>
+
+        <aside class="panel stage-panel">
+          <div class="panel-title"><span>BACKWARD TRACE</span><b>当前这一步</b></div>
+          <div class="stage-list" id="stageList"></div>
+          <div class="stage-card" id="stageCard">
+            <div class="stage-kicker" id="stageKicker">STAGE 00</div>
+            <h3 id="stageTitle">前向传播：先把数算出来</h3>
+            <div class="math" id="stageFormula"></div>
+            <p id="stageText"></p>
+            <div class="stage-code" id="stageCode">z1 = x @ W1.T + b1</div>
+          </div>
+          <div class="stage-nav"><button id="prevStage">← 上一步</button><button id="nextStage">下一步 →</button></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section graph-section" id="graph">
+      <div class="section-head">
+        <div><div class="eyebrow">02 / COMPUTATIONAL GRAPH</div><h2>责任是怎么一层层传回去的</h2><p>前向：x → z¹ → a¹ → z² → ŷ → L。反向：从 L 出发，每一步乘上局部导数，像接力一样传到每个 W 和 b。</p></div>
+      </div>
+
+      <div class="graph-board panel">
+        <div class="graph-row" id="graphRow"></div>
+        <div class="graph-note"><span>绿色 = 当前节点</span><span>橙色 = 当前梯度 δ</span><span>点击节点可跳到对应阶段</span></div>
+      </div>
+
+      <div class="lower-grid">
+        <div class="panel grad-panel">
+          <div class="panel-title"><span>GRADIENT BARS</span><b>9 个参数的梯度</b></div>
+          <div class="grad-legend"><span><i class="dot blue"></i>负梯度（会增大参数）</span><span><i class="dot orange"></i>正梯度（会减小参数）</span></div>
+          <div class="grad-bars" id="gradBars"></div>
+        </div>
+        <div class="panel insight-panel">
+          <div class="card-kicker">INTUITION / 直觉</div>
+          <h3>为什么误差要“乘权重”传回去？</h3>
+          <p>如果一条连接权重很大，它对输出影响就大，理应承担更多责任；如果权重接近 0，它几乎没参与预测，梯度也接近 0。</p>
+          <div class="formula-line" id="responsibilityFormula"></div>
+          <p class="small">所以反向传播不是“平均分摊”，而是按局部导数精确分摊。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section math-section" id="math">
+      <div class="section-head">
+        <div><div class="eyebrow">03 / THE MATH</div><h2>每一层，只做两件事</h2><p>前向：线性 + 激活；反向：把上游梯度乘上本地的两个导数。复杂网络也只是把这件事重复很多次。</p></div>
+      </div>
+
+      <div class="math-grid">
+        <div class="panel formula-card">
+          <div class="card-kicker">FORWARD</div>
+          <h3>前向传播</h3>
+          <div class="math" id="fwdFormula"></div>
+          <p>先线性组合 <b>z = W·a + b</b>，再用激活函数 <b>a = σ(z)</b> 把数值压到 0–1。</p>
+        </div>
+        <div class="panel formula-card">
+          <div class="card-kicker">LOSS</div>
+          <h3>二元交叉熵</h3>
+          <div class="math" id="lossFormula"></div>
+          <p>当 <b>ŷ</b> 离真实标签 <b>y</b> 越远，Loss 越大；反向传播要做的，就是降低它。</p>
+        </div>
+        <div class="panel formula-card">
+          <div class="card-kicker">OUTPUT LAYER</div>
+          <h3>输出层梯度</h3>
+          <div class="math" id="outGradFormula"></div>
+          <p>Sigmoid + 交叉熵有一个非常干净的组合：<b>δ² = ŷ − y</b>。这是整个反向传播的起点。</p>
+        </div>
+        <div class="panel formula-card">
+          <div class="card-kicker">HIDDEN LAYER</div>
+          <h3>隐藏层梯度</h3>
+          <div class="math" id="hidGradFormula"></div>
+          <p>先把输出层梯度按权重传回来，再乘上 Sigmoid 的局部导数 <b>a(1−a)</b>。</p>
+        </div>
+        <div class="panel formula-card">
+          <div class="card-kicker">WEIGHTS</div>
+          <h3>权重梯度</h3>
+          <div class="math" id="weightFormula"></div>
+          <p>一句话：<b>上游梯度 × 本层输入</b>。输入越大，这个权重对误差的责任越大。</p>
+        </div>
+        <div class="panel live-card">
+          <div class="card-kicker">LIVE CHAIN RULE</div>
+          <h3>当前这一步的链式法则</h3>
+          <div class="math" id="liveChain"></div>
+          <p class="live-note" id="liveChainNote"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section code-section" id="code">
+      <div class="section-head">
+        <div><div class="eyebrow">04 / PYTORCH</div><h2>公式和代码，逐行对上</h2><p>PyTorch 的 <b>autograd</b> 会记录前向计算图，<b>loss.backward()</b> 自动完成整条链式法则。你只需要读梯度、更新参数。</p></div>
+      </div>
+
+      <div class="code-layout">
+        <div class="panel code-panel">
+          <div class="code-head"><span>2-2-1 / BINARY CLASSIFICATION</span><b>backprop.py</b></div>
+          <div class="code-scroll">
+            <pre id="codeBlock" aria-label="PyTorch 反向传播代码"></pre>
+          </div>
+          <div class="code-foot"><span>✱ 行号高亮 = 当前阶段对应的代码</span><span>autograd 自动求导</span></div>
+        </div>
+        <div class="code-notes">
+          <div class="panel note-card"><div class="card-kicker">01 / REQUIRES_GRAD</div><h3>只有需要梯度的张量才会被记录</h3><p><b>W1</b>、<b>b1</b>、<b>W2</b>、<b>b2</b> 设置 <b>requires_grad=True</b>，PyTorch 才会在前向时记录它们的运算。</p></div>
+          <div class="panel note-card"><div class="card-kicker">02 / BACKWARD</div><h3>一次 backward，整张图反向走一遍</h3><p><b>loss.backward()</b> 从标量 Loss 出发，按链式法则把梯度累积到每个 leaf tensor 的 <b>.grad</b> 上。</p></div>
+          <div class="panel note-card"><div class="card-kicker">03 / ZERO_GRAD</div><h3>梯度会累加，所以每轮要清零</h3><p>PyTorch 默认把新梯度加到 <b>.grad</b> 上。训练循环里要写 <b>optimizer.zero_grad()</b>，否则梯度会越加越大。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section train-section" id="train">
+      <div class="section-head">
+        <div><div class="eyebrow">05 / TRAINING LOOP</div><h2>一次反向传播，只是走了一步</h2><p>前向 → Loss → backward → 更新参数 → 清零梯度 → 下一轮。重复很多次，Loss 才会一点点降下来。</p></div>
+      </div>
+
+      <div class="train-grid">
+        <div class="panel loss-panel">
+          <div class="panel-title"><span>LOSS CURVE</span><b>训练过程</b></div>
+          <div class="loss-canvas-wrap"><canvas id="lossChart" aria-label="Loss 曲线"></canvas></div>
+          <div class="loss-stats"><div><span>当前 Loss</span><b id="lossNow">0.000</b></div><div><span>已训练步数</span><b id="stepNow">0</b></div><div><span>目标 y</span><b id="targetNow">1</b></div></div>
+        </div>
+        <div class="panel train-controls">
+          <div class="card-kicker">SGD / MANUAL</div>
+          <h3>训练回路</h3>
+          <p>每次执行的更新是：<b>θ ← θ − η · ∂L/∂θ</b>。学习率 η 控制步长。</p>
+          <div class="button-stack">
+            <button class="btn primary" id="trainOne">训练 1 步</button>
+            <button class="btn dark" id="train100">训练 100 步</button>
+            <button class="btn ghost" id="trainReset">清空曲线 + 重置参数</button>
+          </div>
+          <div class="train-note">训练 100 步会更新参数很多次。想看“单次反向传播”的细节，回到上面的实验台逐步点击。</div>
+          <div class="param-table" id="paramTable"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><span>反向传播实验室 / BACKPROP LAB</span><span>原生 Canvas · KaTeX 公式 · 无 D3 / 无 Three.js</span></footer>
+  <div class="toast" id="toast"></div>
+  <script>
+/* =========================================================================
+   反向传播实验室 — a tiny 2-2-1 network, exact forward/backward, native canvas
+   ========================================================================= */
+'use strict';
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const f2 = (v) => Number(v).toFixed(2);
+const f3 = (v) => Number(v).toFixed(3);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const INIT = {
+  x: [0.8, -0.35], y: 1, lr: 0.35,
+  W1: [[0.9, -0.4], [0.7, 1.1]], b1: [0.1, -0.2],
+  W2: [1.2, -0.9], b2: 0.05
+};
+
+const state = {
+  x: [...INIT.x], y: INIT.y, lr: INIT.lr,
+  W1: INIT.W1.map(r => [...r]), b1: [...INIT.b1], W2: [...INIT.W2], b2: INIT.b2,
+  stage: 0, updated: false, auto: null, training: false,
+  history: [], steps: 0, result: null, hover: null, selected: null,
+  lastLoss: 0
+};
+const model = state; // readability
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+function bce(yhat, y) {
+  const p = clamp(yhat, 1e-7, 1 - 1e-7);
+  return -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
+}
+
+/* exact analytical forward + backward for 2 -> 2 -> 1, sigmoid, BCE */
+function forward() {
+  const x = state.x;
+  const z1 = state.W1.map((row, j) => row[0] * x[0] + row[1] * x[1] + state.b1[j]);
+  const a1 = z1.map(sigmoid);
+  const z2 = state.W2[0] * a1[0] + state.W2[1] * a1[1] + state.b2;
+  const yhat = sigmoid(z2);
+  const loss = bce(yhat, state.y);
+  state.result = { z1, a1, z2, yhat, loss };
+  state.lastLoss = loss;
+  return state.result;
+}
+
+function backward() {
+  const r = state.result || forward();
+  const { a1, yhat } = r;
+  const dz2 = yhat - state.y;                 // δ[2], sigmoid + BCE
+  const dW2 = [dz2 * a1[0], dz2 * a1[1]];
+  const db2 = dz2;
+  const da1 = [dz2 * state.W2[0], dz2 * state.W2[1]];
+  const dz1 = da1.map((d, j) => d * a1[j] * (1 - a1[j])); // σ'(z1)
+  const dW1 = state.W1.map((_, j) => [dz1[j] * state.x[0], dz1[j] * state.x[1]]);
+  const db1 = [...dz1];
+  state.grads = { dz2, dW2, db2, da1, dz1, dW1, db1 };
+  return state.grads;
+}
+
+function applyUpdate() {
+  const g = state.grads || backward();
+  const beforeW2 = state.W2[0];
+  for (let j = 0; j < 2; j++) {
+    state.W2[j] -= state.lr * g.dW2[j];
+    state.b1[j] -= state.lr * g.db1[j];
+    for (let k = 0; k < 2; k++) state.W1[j][k] -= state.lr * g.dW1[j][k];
+  }
+  state.b2 -= state.lr * g.db2;
+  state.updated = true;
+  state.lastUpdate = { g, before: beforeW2, after: state.W2[0] };
+  forward();
+  pushHistory();
+}
+
+function setStage(i) {
+  state.stage = clamp(i, 0, 6);
+  state.updated = state.stage >= 6;
+  if (state.stage >= 2 && !state.grads) backward();
+  renderAll();
+}
+
+function nextStage() {
+  if (state.stage >= 6) return;
+  if (state.stage === 5) {
+    // entering update: apply once
+    applyUpdate();
+    state.stage = 6;
+    state.updated = true;
+  } else {
+    state.stage++;
+    if (state.stage >= 2) backward();
+  }
+  renderAll();
+}
+
+function prevStage() {
+  if (state.stage <= 0) return;
+  state.stage--;
+  if (state.stage < 6) state.updated = false;
+  renderAll();
+}
+
+function forwardOnly() {
+  stopAuto();
+  forward();
+  state.grads = null;
+  state.stage = 0;
+  state.updated = false;
+  renderAll();
+}
+
+function resetAll() {
+  stopAuto();
+  state.x = [...INIT.x]; state.y = INIT.y; state.lr = INIT.lr;
+  state.W1 = INIT.W1.map(r => [...r]); state.b1 = [...INIT.b1]; state.W2 = [...INIT.W2]; state.b2 = INIT.b2;
+  state.stage = 0; state.updated = false; state.grads = null; state.history = []; state.steps = 0;
+  state.training = false; state.hover = null; state.selected = null;
+  syncInputs();
+  forward();
+  renderAll();
+}
+
+function randomWeights() {
+  stopAuto();
+  const r = () => (Math.random() * 2 - 1) * 1.2;
+  state.W1 = [[r(), r()], [r(), r()]];
+  state.b1 = [r() * .3, r() * .3];
+  state.W2 = [r(), r()];
+  state.b2 = r() * .3;
+  state.stage = 0; state.updated = false; state.grads = null;
+  forward();
+  renderAll();
+  toast('权重已随机初始化');
+}
+
+function pushHistory() {
+  state.history.push(state.lastLoss);
+  if (state.history.length > 180) state.history.shift();
+}
+
+/* ------------------------------- stages ------------------------------- */
+const STAGES = [
+  { key: 'forward', no: '00', short: '前向', title: '前向传播：先把数算出来', code: 'z₁ = x @ W₁.T + b₁', lines: [15,16,17],
+    text: '输入 x 经过第一层线性变换得到 z¹，再经过 Sigmoid 得到 a¹；同样得到 z²、ŷ，最后算 Loss。前向的中间结果会被保存下来，供反向复用。' },
+  { key: 'loss', no: '01', short: 'Loss', title: 'Loss 说：你错了多少', code: 'loss = F.binary_cross_entropy(y_hat, y)', lines: [19],
+    text: 'Loss 是预测 ŷ 与真实 y 的差距。反向传播的起点，就是 Loss 对输出 ŷ 的导数。' },
+  { key: 'dz2', no: '02', short: 'δ²', title: '输出层的 δ²：误差信号', code: 'δ² = ŷ − y', lines: [20,21],
+    text: 'Sigmoid 和二元交叉熵组合后，输出层的梯度异常干净：δ² = ŷ − y。它就是“预测减真实”，正负表示该把输出调大还是调小。' },
+  { key: 'outGrad', no: '03', short: 'W², b²', title: '输出层权重：谁的责任大', code: 'dW2 = δ² · a¹', lines: [22,23],
+    text: '输出层权重 w₂ 的梯度 = δ² × 对应隐藏层激活 a¹。某个隐藏神经元越活跃，它对输出误差的责任越大。' },
+  { key: 'da1', no: '04', short: 'a¹', title: '把责任传回隐藏层', code: 'da1 = δ² · W2', lines: [24],
+    text: '隐藏层没有直接的“正确答案”，它的梯度来自输出层：把 δ² 按输出权重 w₂ 反向分配回来。' },
+  { key: 'hidGrad', no: '05', short: 'δ¹', title: '隐藏层的 δ¹：再乘局部导数', code: 'δ¹ = da1 ⊙ σ′(z1)', lines: [25,26],
+    text: '传回来的 da1 还不是 z1 的梯度，必须再乘 Sigmoid 的局部导数 a¹(1−a¹)。这就是链式法则多出来的那一层。' },
+  { key: 'update', no: '06', short: '更新', title: '更新参数：真正走一步', code: 'W -= lr * W.grad', lines: [28,29,30,31],
+    text: '所有参数沿负梯度方向走一小步：θ ← θ − η∇θ。一次反向传播到这里才真正改变了模型。' }
+];
+
+/* ------------------------------- DOM helpers ------------------------------- */
+let toastTimer;
+function toast(msg) {
+  const el = $('#toast'); if (!el) return;
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+function syncInputs() {
+  $('#x1').value = state.x[0]; $('#x1v').textContent = f2(state.x[0]);
+  $('#x2').value = state.x[1]; $('#x2v').textContent = f2(state.x[1]);
+  $('#lr').value = state.lr; $('#lrv').textContent = f2(state.lr);
+  $$('[data-y]').forEach(b => b.classList.toggle('active', Number(b.dataset.y) === state.y));
+}
+
+function tex(el, source, display = true) {
+  if (!el) return;
+  if (window.katex) {
+    try { window.katex.render(source, el, { displayMode: display, throwOnError: false, strict: false }); return; } catch (e) {}
+  }
+  el.textContent = source;
+}
+
+function renderMathStatic() {
+  tex($('#fwdFormula'), `z^{[1]}=W^{[1]}x+b^{[1]},\\quad a^{[1]}=\\sigma(z^{[1]})\\\\[4pt]z^{[2]}=W^{[2]}a^{[1]}+b^{[2]},\\quad \\hat y=\\sigma(z^{[2]})`);
+  tex($('#lossFormula'), `L=-\\left[y\\log\\hat y+(1-y)\\log(1-\\hat y)\\right]`);
+  tex($('#outGradFormula'), `\\delta^{[2]}=\\frac{\\partial L}{\\partial z^{[2]}}=\\hat y-y\\\\[4pt]\\frac{\\partial L}{\\partial W^{[2]}}=\\delta^{[2]}\\,(a^{[1]})^T`);
+  tex($('#hidGradFormula'), `\\delta^{[1]}=\\left(W^{[2]}\\right)^T\\delta^{[2]}\\odot\\sigma'\\!\\left(z^{[1]}\\right)`);
+  tex($('#weightFormula'), `\\frac{\\partial L}{\\partial W^{[1]}}=\\delta^{[1]}\\,x^T,\\qquad \\frac{\\partial L}{\\partial b^{[1]}}=\\delta^{[1]}`);
+  tex($('#responsibilityFormula'), `\\frac{\\partial L}{\\partial w_{2j}}=\\delta^{[2]}\\,a_j^{[1]}`);
+}
+
+/* ------------------------------- stage UI ------------------------------- */
+function renderStages() {
+  $('#stageList').innerHTML = STAGES.map((s, i) => `<button class="stage-pill ${i === state.stage ? 'active' : ''} ${i < state.stage ? 'done' : ''}" data-stage="${i}"><span>${s.no}</span>${s.short}</button>`).join('');
+  $$('#stageList .stage-pill').forEach(b => b.addEventListener('click', () => setStage(Number(b.dataset.stage))));
+  $('#stageBadge').textContent = `STAGE ${STAGES[state.stage].no} / ${STAGES[state.stage].short.toUpperCase()}`;
+}
+
+function stageFormula(i) {
+  const r = state.result || forward();
+  const g = state.grads || (i >= 2 ? backward() : null);
+  const s = STAGES[i];
+  if (i === 0) return `z^{[1]}=\\begin{bmatrix}${f2(r.z1[0])}\\\\${f2(r.z1[1])}\\end{bmatrix},\\quad a^{[1]}=\\begin{bmatrix}${f2(r.a1[0])}\\\\${f2(r.a1[1])}\\end{bmatrix},\\quad \\hat y=${f2(r.yhat)}`;
+  if (i === 1) return `L=-\\left[${state.y}\\log(${f2(r.yhat)})+(1-${state.y})\\log(1-${f2(r.yhat)})\\right]=${f3(r.loss)}`;
+  if (i === 2) return `\\delta^{[2]}=\\hat y-y=${f2(r.yhat)}-${state.y}=${f2(g.dz2)}`;
+  if (i === 3) return `\\frac{\\partial L}{\\partial w_2^{[2]}}=\\delta^{[2]}a^{[1]}=\\begin{bmatrix}${f2(g.dW2[0])}\\\\${f2(g.dW2[1])}\\end{bmatrix},\\quad \\frac{\\partial L}{\\partial b^{[2]}}=${f2(g.db2)}`;
+  if (i === 4) return `\\frac{\\partial L}{\\partial a^{[1]}}=\\delta^{[2]}W^{[2]}=\\begin{bmatrix}${f2(g.da1[0])}\\\\${f2(g.da1[1])}\\end{bmatrix}`;
+  if (i === 5) return `\\delta^{[1]}=\\begin{bmatrix}${f2(g.dz1[0])}\\\\${f2(g.dz1[1])}\\end{bmatrix},\\quad \\frac{\\partial L}{\\partial W^{[1]}}=\\delta^{[1]}x^T`;
+  return `\\theta\\leftarrow\\theta-\\eta\\nabla_\\theta L,\\qquad \\eta=${f2(state.lr)}`;
+}
+
+function liveChain(i) {
+  const r = state.result || forward();
+  const g = state.grads || (i >= 2 ? backward() : null);
+  if (i === 0) return { m: `\\hat y=\\sigma\\!\\left(W^{[2]}\\sigma\\!\\left(W^{[1]}x+b^{[1]}\\right)+b^{[2]}\\right)`, note: '前向：线性 → 激活 → 线性 → 激活。把每一层的中间值存下来。' };
+  if (i === 1) return { m: `L=-[y\\log\\hat y+(1-y)\\log(1-\\hat y)]=${f3(r.loss)}`, note: 'Loss 是一个标量，反向传播从它开始。' };
+  if (i === 2) return { m: `\\frac{\\partial L}{\\partial z^{[2]}}=\\hat y-y=${f2(g.dz2)}`, note: '预测比真实大，δ² 为正，说明输出该被调小。' };
+  if (i === 3) return { m: `\\frac{\\partial L}{\\partial w_2^{[2]}}=\\delta^{[2]}a^{[1]}=${f2(g.dz2)}\\times${f2(r.a1[0])}=${f2(g.dW2[0])}`, note: '输出权重的梯度 = 输出误差 × 对应隐藏激活。' };
+  if (i === 4) return { m: `\\frac{\\partial L}{\\partial a^{[1]}}=\\delta^{[2]}W^{[2]}=${f2(g.dz2)}\\times${f2(state.W2[0])}=${f2(g.da1[0])}`, note: '把输出层的责任，按输出权重分回隐藏层。' };
+  if (i === 5) return { m: `\\delta_1^{[1]}=${f2(g.da1[0])}\\times${f2(r.a1[0])}(1-${f2(r.a1[0])})=${f2(g.dz1[0])}`, note: '再乘 Sigmoid 的局部导数 a(1−a)，才得到 z¹ 的梯度。' };
+  const u = state.lastUpdate;
+  if (u) return { m: `w_2^{[2]}\\leftarrow ${f2(u.before)}-${f2(state.lr)}\\times${f2(u.g.dW2[0])}=${f2(u.after)}`, note: '沿负梯度走一步。学习率 η 控制步长；这里展示的是刚刚真正执行的那一步。' };
+  return { m: `w\\leftarrow w-\\eta\\frac{\\partial L}{\\partial w}`, note: '沿负梯度走一步。' };
+}
+
+function renderStageCard() {
+  const s = STAGES[state.stage];
+  $('#stageKicker').textContent = `STAGE ${s.no} / ${s.key.toUpperCase()}`;
+  $('#stageTitle').textContent = s.title;
+  $('#stageText').textContent = s.text;
+  $('#stageCode').textContent = s.code;
+  tex($('#stageFormula'), stageFormula(state.stage));
+  const lc = liveChain(state.stage);
+  tex($('#liveChain'), lc.m);
+  $('#liveChainNote').textContent = lc.note;
+  $('#stageList').querySelectorAll('.stage-pill').forEach((b, i) => {
+    b.classList.toggle('active', i === state.stage);
+    b.classList.toggle('done', i < state.stage);
+  });
+  $('#stageBadge').textContent = `STAGE ${s.no} / ${s.short.toUpperCase()}`;
+  $('#netState').textContent = state.stage === 0 ? 'FORWARD READY' : state.stage === 6 ? 'PARAMETERS UPDATED' : 'BACKWARD / ' + s.short;
+}
+
+/* ------------------------------- computational graph ------------------------------- */
+function renderGraph() {
+  const r = state.result || forward();
+  const g = state.grads;
+  const stage = state.stage;
+  const nodes = [
+    { key: 'x', label: '输入 x', math: `[${f2(state.x[0])}, ${f2(state.x[1])}]`, delta: '', active: stage === 0 },
+    { key: 'z1', label: 'z¹', math: `[${f2(r.z1[0])}, ${f2(r.z1[1])}]`, delta: g ? `δ¹ = [${f2(g.dz1[0])}, ${f2(g.dz1[1])}]` : '', active: stage === 5 },
+    { key: 'a1', label: 'a¹', math: `[${f2(r.a1[0])}, ${f2(r.a1[1])}]`, delta: g ? `∂L/∂a¹ = [${f2(g.da1[0])}, ${f2(g.da1[1])}]` : '', active: stage === 4 },
+    { key: 'z2', label: 'z²', math: f2(r.z2), delta: g ? `δ² = ${f2(g.dz2)}` : '', active: stage === 2 },
+    { key: 'yhat', label: 'ŷ', math: f2(r.yhat), delta: g ? `∂L/∂ŷ = ${f2(g.dz2)}` : '', active: stage === 2 || stage === 3 },
+    { key: 'loss', label: 'Loss L', math: f3(r.loss), delta: '1（起点）', active: stage === 1, loss: true }
+  ];
+  const parts = [];
+  nodes.forEach((n, i) => {
+    if (i) parts.push(`<div class="cg-arrow">→</div>`);
+    parts.push(`<button class="cg-node ${n.active ? 'active' : ''} ${n.loss ? 'loss' : ''}" data-graph="${n.key}"><span>${n.label}</span><b>${n.math}</b>${n.delta ? `<small class="delta">${n.delta}</small>` : '<small>&nbsp;</small>'}</button>`);
+  });
+  $('#graphRow').innerHTML = parts.join('');
+  $$('#graphRow .cg-node').forEach(el => el.addEventListener('click', () => {
+    const k = el.dataset.graph;
+    setStage(k === 'loss' ? 1 : k === 'z2' || k === 'yhat' ? 2 : k === 'a1' ? 4 : k === 'z1' ? 5 : 0);
+  }));
+}
+
+/* ------------------------------- gradient bars ------------------------------- */
+function paramRows() {
+  const g = state.grads;
+  const rows = [];
+  for (let j = 0; j < 2; j++) for (let k = 0; k < 2; k++) rows.push({ name: `W₁[${j + 1},${k + 1}]`, val: state.W1[j][k], grad: g ? g.dW1[j][k] : null, stage: 5, group: 'W1' });
+  rows.push({ name: 'b₁[1]', val: state.b1[0], grad: g ? g.db1[0] : null, stage: 5, group: 'b1' });
+  rows.push({ name: 'b₁[2]', val: state.b1[1], grad: g ? g.db1[1] : null, stage: 5, group: 'b1' });
+  rows.push({ name: 'W₂[1]', val: state.W2[0], grad: g ? g.dW2[0] : null, stage: 3, group: 'W2' });
+  rows.push({ name: 'W₂[2]', val: state.W2[1], grad: g ? g.dW2[1] : null, stage: 3, group: 'W2' });
+  rows.push({ name: 'b₂', val: state.b2, grad: g ? g.db2 : null, stage: 3, group: 'b2' });
+  return rows;
+}
+
+function renderGradBars() {
+  const rows = paramRows();
+  const max = Math.max(.001, ...rows.map(r => Math.abs(r.grad || 0)));
+  $('#gradBars').innerHTML = rows.map(r => {
+    const v = r.grad || 0;
+    const pct = Math.abs(v) / max * 50;
+    const left = v < 0 ? 50 - pct : 50;
+    const active = state.stage === r.stage || state.stage === 6;
+    return `<div class="grad-row ${active ? 'active' : ''}"><span>${r.name}</span><div class="grad-track"><span class="grad-fill ${v < 0 ? 'neg' : ''}" style="left:${left}%;width:${pct}%"></span></div><b>${r.grad == null ? '—' : (v >= 0 ? '+' : '') + f3(v)}</b></div>`;
+  }).join('');
+  $('#paramTable').innerHTML = rows.map(r => `<div class="param-cell"><span>${r.name}</span><b>${f3(r.val)}</b></div>`).join('');
+}
+
+/* ------------------------------- code ------------------------------- */
+const CODE = [
+  ['import torch', 'import'],
+  ['import torch.nn.functional as F', 'import'],
+  ['', ''],
+  ['# 2-2-1：2 个输入，2 个隐藏神经元，1 个输出', 'c'],
+  ['x = torch.tensor([[0.8, -0.35]])          # (1, 2)', ''],
+  ['y = torch.tensor([[1.0]])                   # (1, 1)', ''],
+  ['', ''],
+  ['W1 = torch.tensor([[0.9, -0.4],', ''],
+  ['                     [0.7, 1.1]], requires_grad=True)  # (2, 2)', ''],
+  ['b1 = torch.tensor([0.1, -0.2], requires_grad=True)      # (2,)', ''],
+  ['W2 = torch.tensor([1.2, -0.9], requires_grad=True)     # (2,)', ''],
+  ['b2 = torch.tensor(0.05, requires_grad=True)             # scalar', ''],
+  ['', ''],
+  ['# ── 前向：保存中间值，供反向复用 ──', 'c'],
+  ['z1 = x @ W1.T + b1          # (1,2) @ (2,2) -> (1,2)', ''],
+  ['a1 = torch.sigmoid(z1)      # 隐藏层激活', ''],
+  ['z2 = a1 @ W2 + b2           # (1,2) @ (2,) -> (1,)', ''],
+  ['y_hat = torch.sigmoid(z2)   # 输出概率', ''],
+  ['loss = F.binary_cross_entropy(y_hat, y)', ''],
+  ['', ''],
+  ['# ── 反向：autograd 沿计算图自动做链式法则 ──', 'c'],
+  ['loss.backward()', ''],
+  ['', ''],
+  ['# δ² = y_hat - y 已经自动体现在 W2.grad / b2.grad 里', 'c'],
+  ['print(W2.grad, b2.grad)', ''],
+  ['print(W1.grad, b1.grad)', ''],
+  ['', ''],
+  ['# ── 更新：沿负梯度走一步 ──', 'c'],
+  ['with torch.no_grad():', ''],
+  ['    W1 -= 0.35 * W1.grad', ''],
+  ['    b1 -= 0.35 * b1.grad', ''],
+  ['    W2 -= 0.35 * W2.grad', ''],
+  ['    b2 -= 0.35 * b2.grad', ''],
+  ['', ''],
+  ['# 下一轮前必须清零，否则梯度会累加', 'c'],
+  ['W1.grad.zero_(); b1.grad.zero_()', ''],
+  ['W2.grad.zero_(); b2.grad.zero_()', ''],
+];
+
+function renderCode() {
+  const highlights = new Set(STAGES[state.stage].lines);
+  $('#codeBlock').innerHTML = CODE.map(([t, type], i) => {
+    const line = i + 1;
+    let text = escHtml(t).replace(/&quot;/g, '"');
+    // lightweight syntax coloring
+    text = text.replace(/(#.*)$/g, '<span class="c">$1</span>');
+    text = text.replace(/\b(import|as|with|in|def|return|True|False)\b/g, '<span class="k">$1</span>');
+    text = text.replace(/\b(torch|F)\b/g, '<span class="f">$1</span>');
+    text = text.replace(/\b(\d+\.\d+|\d+)\b/g, '<span class="n">$1</span>');
+    return `<span class="code-line ${highlights.has(line) ? 'hi' : ''}">${text || ' '}</span>`;
+  }).join('');
+}
+function escHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+/* ------------------------------- network canvas ------------------------------- */
+const NET = { canvas: null, ctx: null, nodes: [], edges: [], particles: [], time: 0, dpr: 1 };
+
+function netLayout(rect) {
+  const w = rect.width, h = rect.height;
+  const inX = w * .13, hidX = w * .45, outX = w * .71, lossX = w * .9;
+  const inY = [h * .38, h * .64];
+  const hidY = [h * .28, h * .72];
+  const outY = h * .5;
+  return { w, h, inX, hidX, outX, lossX, inY, hidY, outY };
+}
+
+function buildNetGeometry() {
+  const r = netLayout(NET.canvas.getBoundingClientRect());
+  const nodes = [
+    { id: 'x1', x: r.inX, y: r.inY[0], label: 'x₁', layer: 'input', value: state.x[0], grad: null },
+    { id: 'x2', x: r.inX, y: r.inY[1], label: 'x₂', layer: 'input', value: state.x[1], grad: null },
+    { id: 'h1', x: r.hidX, y: r.hidY[0], label: 'h₁', layer: 'hidden', value: state.result.a1[0], grad: state.grads ? state.grads.dz1[0] : null },
+    { id: 'h2', x: r.hidX, y: r.hidY[1], label: 'h₂', layer: 'hidden', value: state.result.a1[1], grad: state.grads ? state.grads.dz1[1] : null },
+    { id: 'out', x: r.outX, y: r.outY, label: 'ŷ', layer: 'output', value: state.result.yhat, grad: state.grads ? state.grads.dz2 : null },
+    { id: 'loss', x: r.lossX, y: r.outY, label: 'L', layer: 'loss', value: state.result.loss, grad: 1 }
+  ];
+  const edges = [];
+  for (let j = 0; j < 2; j++) for (let k = 0; k < 2; k++) edges.push({ from: k === 0 ? 'x1' : 'x2', to: j === 0 ? 'h1' : 'h2', w: state.W1[j][k], grad: state.grads ? state.grads.dW1[j][k] : null, stage: 5, phase: (j * 2 + k) * .17 });
+  for (let j = 0; j < 2; j++) edges.push({ from: j === 0 ? 'h1' : 'h2', to: 'out', w: state.W2[j], grad: state.grads ? state.grads.dW2[j] : null, stage: 3, phase: j * .26 + .1 });
+  edges.push({ from: 'out', to: 'loss', w: 1, grad: null, stage: 1, phase: .5 });
+  NET.nodes = nodes; NET.edges = edges;
+  if (!NET.particles.length) {
+    NET.particles = edges.map((e, i) => ({ i, phase: (i * .23) % 1 }));
+  }
+}
+
+function drawNetwork(now) {
+  const c = NET.canvas, ctx = NET.ctx;
+  if (!c || !ctx) return;
+  const rect = c.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (c.width !== Math.floor(rect.width * dpr) || c.height !== Math.floor(rect.height * dpr)) {
+    c.width = Math.floor(rect.width * dpr); c.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const { w, h } = rect;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
+  // grid
+  ctx.strokeStyle = 'rgba(169,200,255,.05)'; ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 36) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  buildNetGeometry();
+  const n = Object.fromEntries(NET.nodes.map(x => [x.id, x]));
+  const stage = state.stage;
+  NET.time += .016;
+
+  // layer captions
+  ctx.fillStyle = 'rgba(233,242,255,.42)'; ctx.font = '10px "Cascadia Code", monospace'; ctx.textAlign = 'center';
+  ctx.fillText('输入层 a[0]', n.x1.x, h - 22);
+  ctx.fillText('隐藏层 a[1]', n.h1.x, h - 22);
+  ctx.fillText('输出层', n.out.x, h - 22);
+  ctx.fillText('损失', n.loss.x, h - 22);
+  ctx.textAlign = 'left';
+
+  // edges
+  NET.edges.forEach((e, i) => {
+    const a = n[e.from], b = n[e.to];
+    if (!a || !b) return;
+    const active = (stage === e.stage || stage === 6 || (e.stage === 1 && stage >= 1));
+    const negative = e.w < 0;
+    ctx.strokeStyle = active ? 'rgba(255,138,76,.82)' : (negative ? 'rgba(244,114,182,.36)' : 'rgba(169,200,255,.38)');
+    ctx.lineWidth = 1.1 + Math.min(2.2, Math.abs(e.w) * 1.2);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    // arrowhead
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    ctx.fillStyle = active ? '#FF8A4C' : 'rgba(169,200,255,.55)';
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - 9 * Math.cos(ang - .4), b.y - 9 * Math.sin(ang - .4)); ctx.lineTo(b.x - 9 * Math.cos(ang + .4), b.y - 9 * Math.sin(ang + .4)); ctx.closePath(); ctx.fill();
+    // weight label
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    ctx.fillStyle = active ? '#FFD0AD' : 'rgba(233,242,255,.5)';
+    ctx.font = '9px "Cascadia Code", monospace'; ctx.textAlign = 'center';
+    ctx.fillText(`w=${f2(e.w)}`, mx, my - 5);
+    if (e.grad != null && (stage === e.stage || stage === 6 || stage > e.stage)) {
+      ctx.fillStyle = '#FF8A4C';
+      ctx.fillText(`∂L/∂w=${f3(e.grad)}`, mx, my + 9);
+    }
+    ctx.textAlign = 'left';
+  });
+
+  // particles forward / backward
+  NET.particles.forEach((p, idx) => {
+    const e = NET.edges[p.i]; if (!e) return;
+    const a = n[e.from], b = n[e.to]; if (!a || !b) return;
+    const phase = (NET.time * .28 + p.phase) % 1;
+    if (state.stage >= 0) {
+      const t = .18 + phase * .64;
+      const px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t;
+      ctx.fillStyle = 'rgba(169,200,255,.85)'; ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    if (stage >= 2) {
+      const t = 1 - (.18 + phase * .64);
+      const px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t;
+      ctx.fillStyle = 'rgba(255,138,76,.9)'; ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // nodes
+  NET.nodes.forEach(nd => {
+    const active = (nd.id === 'loss' && stage === 1) || (nd.id === 'out' && (stage === 2 || stage === 3)) || (nd.id.startsWith('h') && (stage === 4 || stage === 5)) || (nd.layer === 'input' && stage === 3) || stage === 6;
+    const color = nd.layer === 'input' ? '#A9C8FF' : nd.layer === 'hidden' ? '#FFD166' : nd.layer === 'output' ? '#F472B6' : '#FF8A4C';
+    if (active) {
+      ctx.shadowColor = color; ctx.shadowBlur = 22;
+    }
+    ctx.fillStyle = '#0F1A2B'; ctx.strokeStyle = active ? color : 'rgba(220,235,255,.55)'; ctx.lineWidth = active ? 3 : 1.6;
+    ctx.beginPath(); ctx.arc(nd.x, nd.y, nd.layer === 'loss' ? 32 : 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#EAF2FF'; ctx.font = '600 13px "Cascadia Code", monospace'; ctx.textAlign = 'center';
+    ctx.fillText(nd.label, nd.x, nd.y - 4);
+    ctx.fillStyle = color; ctx.font = '600 13px "Cascadia Code", monospace';
+    ctx.fillText(nd.layer === 'loss' ? f3(nd.value) : f2(nd.value), nd.x, nd.y + 13);
+    if (nd.grad != null && stage >= 2) {
+      ctx.fillStyle = 'rgba(255,138,76,.9)'; ctx.font = '9px "Cascadia Code", monospace';
+      ctx.fillText(`δ ${f3(nd.grad)}`, nd.x, nd.y + 48);
+    }
+    ctx.textAlign = 'left';
+  });
+
+  // title
+  ctx.fillStyle = 'rgba(233,242,255,.35)'; ctx.font = '10px "Cascadia Code", monospace';
+  ctx.fillText('FORWARD →', 16, 22);
+  ctx.fillStyle = 'rgba(255,138,76,.7)'; ctx.textAlign = 'right';
+  ctx.fillText('← BACKWARD', w - 16, 22); ctx.textAlign = 'left';
+}
+
+/* tooltip / click */
+function initNetworkCanvas() {
+  const c = $('#networkCanvas');
+  if (!c) return;
+  NET.canvas = c; NET.ctx = c.getContext('2d');
+  c.addEventListener('pointermove', e => {
+    const rect = c.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bd = 34;
+    (NET.nodes || []).forEach(nd => { const d = Math.hypot(nd.x - mx, nd.y - my); if (d < bd) { bd = d; best = nd; } });
+    const tip = $('#nodeTip');
+    if (best) {
+      tip.innerHTML = `<b>${best.label}</b> = ${best.layer === 'loss' ? f3(best.value) : f2(best.value)}<br>${best.grad != null ? `梯度 = ${f3(best.grad)}` : '梯度：先做反向传播'}`;
+      tip.style.left = (e.clientX - rect.left + 16) + 'px'; tip.style.top = (e.clientY - rect.top + 10) + 'px';
+      tip.classList.add('show');
+      state.hover = best.id;
+    } else { tip.classList.remove('show'); state.hover = null; }
+  });
+  c.addEventListener('pointerleave', () => { $('#nodeTip').classList.remove('show'); state.hover = null; });
+  c.addEventListener('click', e => {
+    const rect = c.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bd = 34;
+    (NET.nodes || []).forEach(nd => { const d = Math.hypot(nd.x - mx, nd.y - my); if (d < bd) { bd = d; best = nd; } });
+    if (!best) return;
+    state.selected = best.id;
+    if (best.id === 'loss') setStage(1);
+    else if (best.id === 'out') setStage(2);
+    else if (best.id.startsWith('h')) setStage(5);
+    else setStage(0);
+  });
+  new ResizeObserver(() => drawNetwork(performance.now())).observe(c.parentElement);
+}
+
+/* ------------------------------- loss chart ------------------------------- */
+const CHART = { canvas: null, ctx: null };
+function drawLossChart() {
+  const c = CHART.canvas; if (!c) return;
+  const ctx = CHART.ctx;
+  const rect = c.getBoundingClientRect(); if (!rect.width || !rect.height) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (c.width !== Math.floor(rect.width * dpr) || c.height !== Math.floor(rect.height * dpr)) {
+    c.width = Math.floor(rect.width * dpr); c.height = Math.floor(rect.height * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#FFFCF5'; ctx.fillRect(0, 0, w, h);
+  const data = state.history.length ? state.history : [state.lastLoss];
+  const pad = 34;
+  const max = Math.max(.05, ...data), min = 0;
+  ctx.strokeStyle = 'rgba(29,39,50,.1)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y = pad + i / 4 * (h - pad * 2); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - 12, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(29,39,50,.4)'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(pad, h - pad); ctx.lineTo(w - 12, h - pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.stroke();
+  ctx.fillStyle = 'rgba(29,39,50,.55)'; ctx.font = '10px "Cascadia Code", monospace';
+  ctx.fillText('Loss', 8, 18); ctx.fillText('0', 16, h - pad + 4);
+  if (data.length > 1) {
+    ctx.strokeStyle = '#FF8A4C'; ctx.lineWidth = 2.4; ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = pad + i / (data.length - 1) * (w - pad - 18);
+      const y = h - pad - (v / max) * (h - pad * 2);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    const last = data[data.length - 1];
+    const x = w - 18, y = h - pad - (last / max) * (h - pad * 2);
+    ctx.fillStyle = '#FF8A4C'; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(29,39,50,.45)'; ctx.font = '9px "Cascadia Code", monospace';
+  ctx.fillText('STEP', w - 38, h - 8);
+  $('#lossNow').textContent = f3(state.lastLoss);
+  $('#stepNow').textContent = state.steps;
+  $('#targetNow').textContent = state.y;
+}
+
+/* ------------------------------- training ------------------------------- */
+function trainStep() {
+  if (!state.grads) backward();
+  applyUpdate();
+  state.steps++;
+  state.stage = 0;
+  renderAll();
+}
+
+function trainMany(n) {
+  if (state.training) return;
+  state.training = true;
+  const start = state.steps;
+  const tick = () => {
+    if (state.steps - start >= n) {
+      state.training = false;
+      toast(`训练完成：${n} 步，Loss = ${f3(state.lastLoss)}`);
+      return;
+    }
+    trainStep();
+    drawLossChart();
+    setTimeout(tick, 12);
+  };
+  tick();
+}
+
+function stopAuto() {
+  if (state.auto) clearInterval(state.auto);
+  state.auto = null;
+  const b = $('#autoBtn'); if (b) b.textContent = '自动播放 6 步';
+}
+
+/* ------------------------------- render all ------------------------------- */
+function renderAll() {
+  forward();
+  if (state.stage < 2) state.grads = null;
+  if (state.stage >= 2) backward();
+  renderStages();
+  renderStageCard();
+  renderGraph();
+  renderGradBars();
+  renderCode();
+  drawNetwork(performance.now());
+  drawLossChart();
+  syncInputs();
+  $('#stageBadge').textContent = `STAGE ${STAGES[state.stage].no} / ${STAGES[state.stage].short.toUpperCase()}`;
+  $('#forwardBtn').classList.toggle('active', state.stage === 0);
+}
+
+/* ------------------------------- events / init ------------------------------- */
+function bind() {
+  $('#x1').addEventListener('input', e => { state.x[0] = Number(e.target.value); $('#x1v').textContent = f2(state.x[0]); forwardOnly(); });
+  $('#x2').addEventListener('input', e => { state.x[1] = Number(e.target.value); $('#x2v').textContent = f2(state.x[1]); forwardOnly(); });
+  $('#lr').addEventListener('input', e => { state.lr = Number(e.target.value); $('#lrv').textContent = f2(state.lr); renderAll(); });
+  $$('[data-y]').forEach(b => b.addEventListener('click', () => {
+    state.y = Number(b.dataset.y);
+    $$('[data-y]').forEach(x => x.classList.toggle('active', x === b));
+    forwardOnly();
+  }));
+  $('#forwardBtn').addEventListener('click', forwardOnly);
+  $('#backBtn').addEventListener('click', nextStage);
+  $('#prevStage').addEventListener('click', prevStage);
+  $('#nextStage').addEventListener('click', nextStage);
+  $('#autoBtn').addEventListener('click', () => {
+    if (state.auto) { stopAuto(); return; }
+    forwardOnly();
+    state.auto = setInterval(() => {
+      if (state.stage >= 6) { stopAuto(); return; }
+      nextStage();
+    }, 900);
+    $('#autoBtn').textContent = '停止自动播放';
+  });
+  $('#randomBtn').addEventListener('click', randomWeights);
+  $('#resetBtn').addEventListener('click', resetAll);
+  $('#trainOne').addEventListener('click', () => { trainStep(); toast('已完成一次参数更新'); });
+  $('#train100').addEventListener('click', () => trainMany(100));
+  $('#trainReset').addEventListener('click', resetAll);
+  $('#lossChart').addEventListener('pointermove', () => {});
+  new ResizeObserver(() => drawLossChart()).observe($('#lossChart').parentElement);
+}
+
+function init() {
+  renderMathStatic();
+  syncInputs();
+  forward();
+  state.history = [state.lastLoss];
+  initNetworkCanvas();
+  CHART.canvas = $('#lossChart'); CHART.ctx = CHART.canvas.getContext('2d');
+  bind();
+  renderAll();
+  requestAnimationFrame(loop);
+}
+
+let lastFrame = performance.now();
+function loop(now) {
+  const dt = Math.min(50, now - lastFrame); lastFrame = now;
+  if (NET.canvas) drawNetwork(now);
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('load', init);
+
+
+
+
+</script>
+</body>
+</html>
