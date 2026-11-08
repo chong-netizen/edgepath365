@@ -284,6 +284,8 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
   <script defer>
 /* =========================================================================
    手写工坊 — Word → human-ish handwriting, client-side
@@ -347,6 +349,7 @@ const state = {
   pageEls: [],
   observer: null,
   isSample: true,
+  source: 'sample',
   maxReached: false,
   truncated: false
 };
@@ -712,7 +715,7 @@ function drawHandChar(ctx, ch, x, y, size, style, rng, m, ink) {
   const sx = 1 + (rng() - .5) * (.06 + m * .24);
   const sy = 1 + (rng() - .5) * (.07 + m * .27);
   const skew = (rng() - .5) * (.026 + m * .2);
-  const alpha = .62 + rng() * .34;
+  const alpha = .70 + rng() * .27;
   ctx.save();
   ctx.translate(x, y + jitterY);
   ctx.rotate(rot);
@@ -927,7 +930,8 @@ function updateMeta() {
   const chars = text.replace(/\s/g, '').length;
   const pages = state.pages.length;
   $('#docTitle').textContent = state.doc.name;
-  $('#docMeta').textContent = `${pages} 页 · 约 ${chars} 字 · ${state.isSample ? '示例预览' : '手写预览'}`;
+  const sourceLabel = state.isSample ? '示例预览' : state.source === 'image' ? '图片 OCR' : state.source === 'docx-ocr' ? '内嵌图片 OCR' : '手写预览';
+  $('#docMeta').textContent = `${pages} 页 · 约 ${chars} 字 · ${sourceLabel}`;
   $('#fileName').textContent = '当前：' + state.doc.name;
   $('#pageInfo').textContent = `PAGE 1 / ${pages}`;
   $('#zoomV').textContent = Math.round(state.zoom * 100) + '%';
@@ -1110,21 +1114,152 @@ function drawHeroSample() {
 }
 
 /* ------------------------------ file loading ------------------------------ */
-function setDoc(name, blocks, isSample = false) {
+function setDoc(name, blocks, isSample = false, source = 'docx') {
   state.doc = { name, blocks };
   state.isSample = isSample;
+  state.source = source;
   state.seed = newSeed();
   state.pages = [];
   scheduleRender(30);
 }
 
+let ocrWorker = null;
+let ocrWorkerPromise = null;
+let ocrActive = false;
+
+function ocrLogger(m) {
+  if (!ocrActive) return;
+  const pct = Math.round((m.progress || 0) * 100);
+  const loadingModel = /loading|initial|traineddata/i.test(m.status || '');
+  setLoading(loadingModel ? '正在加载中文识别模型…' : '正在识别图片…', `${m.status || 'OCR'} · ${pct}%`);
+}
+
+async function getOcrWorker() {
+  if (ocrWorker) return ocrWorker;
+  if (!window.Tesseract) throw new Error('OCR 组件未加载，请检查网络后刷新');
+  if (!ocrWorkerPromise) {
+    const options = {
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.0/',
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/chi_sim@1.0.0/4.0.0',
+      logger: ocrLogger
+    };
+    ocrWorkerPromise = window.Tesseract.createWorker('chi_sim', 1, options)
+      .then(w => { ocrWorker = w; return w; })
+      .catch(err => { ocrWorkerPromise = null; ocrWorker = null; throw err; });
+  }
+  return ocrWorkerPromise;
+}
+
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片无法读取')); };
+    img.src = url;
+  });
+}
+
+function imageToOcrCanvas(img) {
+  const maxSide = 2400;
+  let scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  if (Math.max(img.width, img.height) < 900) scale = Math.min(2, 1200 / Math.max(1, Math.min(img.width, img.height)));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h);
+  try { ctx.filter = 'grayscale(1) contrast(1.16)'; } catch (e) {}
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas;
+}
+
+async function recognizeImageFile(file) {
+  const img = await loadImageFile(file);
+  const canvas = imageToOcrCanvas(img);
+  ocrActive = true;
+  try {
+    const worker = await getOcrWorker();
+    setLoading('正在识别图片…', '首次需加载中文模型（约 20MB）');
+    const { data } = await worker.recognize(canvas);
+    return (data && data.text) || '';
+  } finally {
+    ocrActive = false;
+  }
+}
+
+function cleanOcrLine(t) {
+  return String(t || '')
+    .replace(/([\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])/g, '$1')
+    .replace(/\s+([，。！？；：、）》】”’])/g, '$1')
+    .replace(/([（《【“])\s+/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function blocksFromOcr(text) {
+  const lines = String(text || '').split(/\n+/).map(cleanOcrLine).filter(Boolean);
+  const blocks = [];
+  let buf = '';
+  for (const line of lines) {
+    if (line.length < 3) continue;
+    const glue = buf && /[\u4e00-\u9fff]$/.test(buf) && /^[\u4e00-\u9fff]/.test(line) ? '' : ' ';
+    buf += (buf ? glue : '') + line;
+    if (buf.length > 140 || /[。！？.!?；;]$/.test(line)) {
+      blocks.push({ type: 'p', text: cleanOcrLine(buf) });
+      buf = '';
+    }
+  }
+  if (buf) blocks.push({ type: 'p', text: cleanOcrLine(buf) });
+  return blocks;
+}
+
+async function extractDocxImages(buffer) {
+  if (!window.JSZip) return [];
+  try {
+    const zip = await window.JSZip.loadAsync(buffer);
+    const names = Object.keys(zip.files).filter(n => /^word\/media\//i.test(n) && /\.(png|jpe?g|webp|bmp)$/i.test(n));
+    const files = names.map(n => ({ name: n, size: (zip.files[n]._data && zip.files[n]._data.uncompressedSize) || 0 }))
+      .sort((a, b) => b.size - a.size).slice(0, 4);
+    const out = [];
+    for (const f of files) {
+      const blob = await zip.file(f.name).async('blob');
+      if (blob && blob.size > 1200) out.push(blob);
+    }
+    return out;
+  } catch (e) { return []; }
+}
+
+async function handleImageFile(file) {
+  state.uploading = true;
+  setLoading('正在准备图片…', '图片只在本地识别，不上传服务器');
+  try {
+    if (!window.Tesseract) throw new Error('OCR 组件未加载，请检查网络后刷新');
+    const text = await recognizeImageFile(file);
+    const blocks = blocksFromOcr(text);
+    if (!blocks.length) throw new Error('没有识别到文字，请换一张更清晰、方向正确的图片');
+    setDoc(file.name.replace(/\.[^.]+$/, '') + ' · 图片识别', blocks, false, 'image');
+    toast(`图片识别完成：${blocks.length} 段文字；公式可在“粘贴/编辑”里校正`);
+  } catch (err) {
+    console.error(err);
+    toast('图片识别失败：' + (err.message || err));
+    setLoadingHide();
+  } finally {
+    state.uploading = false;
+  }
+}
+
 async function handleFile(file) {
   if (!file || state.uploading) return;
-  if (!/\.docx$/i.test(file.name)) {
-    toast('请上传 .docx 文件；旧版 .doc 请先另存为 .docx');
+  const isImage = /^image\//i.test(file.type || '') || /\.(png|jpe?g|webp|bmp)$/i.test(file.name);
+  if (!isImage && !/\.docx$/i.test(file.name)) {
+    toast('请上传 .docx / PNG / JPG；旧版 .doc 请先另存为 .docx');
     return;
   }
   if (file.size > MAX_FILE_MB * 1024 * 1024) { toast(`文件太大，最大支持 ${MAX_FILE_MB}MB`); return; }
+  if (isImage) { await handleImageFile(file); return; }
   if (!window.mammoth) { toast('Word 解析库还在加载，请稍后再试'); return; }
   state.uploading = true;
   setLoading('正在解析 Word…', `${(file.size / 1024 / 1024).toFixed(1)}MB · 本地读取`);
@@ -1139,8 +1274,23 @@ async function handleFile(file) {
       const result = await window.mammoth.convertToHtml({ arrayBuffer: buffer });
       blocks = blocksFromHtml(result.value || '');
     }
-    if (!blocks.length) throw new Error('没有读到文字内容（可能是扫描图片或空文档）');
-    setDoc(file.name, blocks, false);
+    if (!blocks.length) {
+      // 扫描版 Word：没有文字层，尝试识别内嵌图片
+      setLoading('Word 里没有文字层，正在识别内嵌图片…', '首次需加载中文模型');
+      const imgs = await extractDocxImages(buffer);
+      if (!imgs.length) throw new Error('没有可读文字，也没有找到内嵌图片');
+      const chunks = [];
+      for (let i = 0; i < imgs.length; i++) {
+        setLoading('正在识别内嵌图片…', `${i + 1} / ${imgs.length} 张 · 首次需加载中文模型`);
+        chunks.push(await recognizeImageFile(imgs[i]));
+      }
+      blocks = blocksFromOcr(chunks.join('\n\n'));
+      if (!blocks.length) throw new Error('内嵌图片没有识别到文字');
+      setDoc(file.name + ' · 内嵌图片识别', blocks, false, 'docx-ocr');
+      toast(`已从图片识别 ${blocks.length} 段文字`);
+      return;
+    }
+    setDoc(file.name, blocks, false, 'docx');
     toast(`已读取 ${blocks.length} 段文字`);
   } catch (err) {
     console.error(err);
@@ -1275,7 +1425,12 @@ function bindUI() {
   $('#exportPdf').addEventListener('click', exportPdf);
 
   // paste modal
-  $('#pasteBtn').addEventListener('click', () => { $('#pasteModal').classList.add('show'); $('#pasteText').focus(); });
+  $('#pasteBtn').addEventListener('click', () => {
+    const existing = state.doc.blocks.map(b => b.text).join('\n\n');
+    $('#pasteText').value = existing;
+    $('#pasteModal').classList.add('show');
+    $('#pasteText').focus();
+  });
   $('#closePaste').addEventListener('click', closePaste);
   $('#cancelPaste').addEventListener('click', closePaste);
   $('#pasteModal').addEventListener('click', e => { if (e.target === $('#pasteModal')) closePaste(); });
@@ -1333,7 +1488,7 @@ window.addEventListener('load', init);
         <h1>把 Word，<br><em>写成一页人手写。</em></h1>
         <p>不是把电脑字体直接印在纸上。每一行有轻微的基线漂移，每一个字有自己的倾斜、大小和墨色；该写错的地方会划掉、涂改、重写。</p>
         <div class="hero-actions">
-          <button class="btn primary" id="heroUpload">上传 Word 文档 <span>↑</span></button>
+          <button class="btn primary" id="heroUpload">上传 Word / 图片 <span>↑</span></button>
           <button class="btn ghost" id="demoBtn">先看一份示例</button>
         </div>
         <div class="hero-meta">
@@ -1358,11 +1513,11 @@ window.addEventListener('load', init);
         <div class="panel-head"><div><span class="kicker">SETTINGS</span><h2>手写设置</h2></div><button class="reset-link" id="resetBtn">重置</button></div>
 
         <div class="dropzone" id="dropzone">
-          <input type="file" id="fileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+          <input type="file" id="fileInput" accept=".docx,image/png,image/jpeg,image/webp,image/bmp,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
           <div class="drop-icon">↥</div>
-          <b>把 .docx 拖到这里</b>
-          <span>或 <button id="browseBtn">选择文件</button> · 最大 8MB · 也可粘贴文字</span>
-          <small id="fileName">当前：示例文档</small>
+          <b>把 Word 或图片拖到这里</b>
+          <span>或 <button id="browseBtn">选择文件</button> · .docx / PNG / JPG · 最大 8MB</span>
+          <small id="fileName">当前：示例文档 · 图片可 OCR</small>
         </div>
 
         <div class="control-section" id="styles">
@@ -1395,7 +1550,7 @@ window.addEventListener('load', init);
 
         <div class="control-actions">
           <button class="btn dark" id="regenerate">换一版手写 ↻</button>
-          <button class="btn ghost" id="pasteBtn">粘贴文字</button>
+          <button class="btn ghost" id="pasteBtn">粘贴 / 编辑</button>
         </div>
 
         <div class="privacy-note"><span>●</span><p><b>完全在浏览器本地处理。</b>Word 文件不会离开你的电脑，也不会保存到任何服务器。</p></div>
@@ -1431,7 +1586,7 @@ window.addEventListener('load', init);
     <section class="notes">
       <div><b>适合</b><span>作业草稿、读书笔记、书信、个人手账、教学素材。</span></div>
       <div><b>字形</b><span>使用开源手写字库（Long Cang、Zhi Mang Xing 等），再叠加逐字扰动；不是印刷体，也不是扫描真人笔迹。</span></div>\n      <div><b>说明</b><span>用于模拟日常书写；请勿用于伪造签名、公文或欺诈。</span></div>
-      <div><b>格式</b><span>支持 .docx；旧版 .doc 请先另存为 .docx。图片和复杂表格会转为文字。</span></div>
+      <div><b>格式</b><span>支持 .docx 和图片（PNG/JPG OCR）；旧版 .doc 请先另存为 .docx。图片首次识别需加载中文模型。</span></div>
     </section>
   </main>
 
@@ -1448,6 +1603,8 @@ window.addEventListener('load', init);
   <div class="toast" id="toast"></div>
 </body>
 </html>
+
+
 
 
 
