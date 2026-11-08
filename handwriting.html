@@ -302,19 +302,23 @@ const PREVIEW_SCALE = .85;
 const FONTS = {
   clean: {
     key: 'clean', name: '清秀笔记', family: 'Long Cang', tag: '细笔',
-    sample: '今天也要写', desc: '细笔、清秀，像认真记的课堂笔记', bias: .72
+    sample: '今天也要写', desc: '细笔、清秀，像认真记的课堂笔记', bias: .82,
+    mix: [{ family: 'Long Cang', p: .68 }, { family: 'Zhi Mang Xing', p: .32 }]
   },
   casual: {
     key: 'casual', name: '随性连笔', family: 'Zhi Mang Xing', tag: '连笔',
-    sample: '有点忙', desc: '轻微连笔，像写给自己的便签', bias: 1.02
+    sample: '有点忙', desc: '轻微连笔，像写给自己的便签', bias: 1.05,
+    mix: [{ family: 'Zhi Mang Xing', p: .7 }, { family: 'Long Cang', p: .3 }]
   },
   messy: {
     key: 'messy', name: '潦草速记', family: 'Liu Jian Mao Cao', tag: '草稿',
-    sample: '先这样吧', desc: '更草、更快，像赶出来的草稿', bias: 1.3
+    sample: '先这样吧', desc: '更草、更快，像赶出来的草稿', bias: 1.38,
+    mix: [{ family: 'Liu Jian Mao Cao', p: .76 }, { family: 'Zhi Mang Xing', p: .24 }]
   },
   brush: {
     key: 'brush', name: '松弛手账', family: 'Ma Shan Zheng', tag: '毛笔',
-    sample: '慢慢来', desc: '带一点毛笔味，适合手账和书信', bias: .9
+    sample: '慢慢来', desc: '带一点毛笔味，适合手账和书信', bias: .96,
+    mix: [{ family: 'Ma Shan Zheng', p: .72 }, { family: 'Long Cang', p: .28 }]
   }
 };
 const INKS = {
@@ -331,7 +335,7 @@ const PAPER = {
 
 const state = {
   doc: { name: '示例 · 秋日笔记.docx', blocks: [] },
-  settings: { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 8, paper: 'ruled', ink: 'black' },
+  settings: { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 68, correction: 8, paper: 'ruled', ink: 'black' },
   seed: 20261108,
   pages: [],
   zoom: 1,
@@ -460,6 +464,16 @@ function blocksFromHtml(html) {
 
 /* ------------------------------ font helpers ------------------------------ */
 function currentFont() { return FONTS[state.settings.fontKey] || FONTS.clean; }
+function pickMix(rng) {
+  const mix = currentFont().mix || [];
+  let r = rng();
+  for (const m of mix) {
+    if (r < m.p) return m.family;
+    r -= m.p;
+  }
+  return currentFont().family;
+}
+
 function fontFamily(style = currentFont()) {
   return `"${style.family}", "Caveat", "KaiTi", "STKaiti", "Cambria Math", "Segoe UI Symbol", "Segoe Print", cursive`;
 }
@@ -467,20 +481,24 @@ function fontString(size, style = currentFont()) { return `${size}px ${fontFamil
 
 async function ensureFonts(text) {
   const style = currentFont();
-  const family = style.family;
-  if (fontReady.has(family)) return;
-  const sample = String(text || '').slice(0, 1200);
+  const sample = String(text || '').slice(0, 1200) || '你好，今天也要好好写字。';
+  const families = [style.family, ...(style.mix || []).map(m => m.family)];
+  const pending = [...new Set(families)].filter(f => !fontReady.has(f));
+  if (!pending.length) return;
   try {
-    if (document.fonts.check(`32px "${family}"`, sample || '你好')) { fontReady.add(family); return; }
-  } catch (e) {}
-  try {
-    const ok = await Promise.race([
-      document.fonts.load(`32px "${family}"`, sample || '你好，今天也要好好写字。').then(() => true),
-      new Promise(r => setTimeout(() => r(false), 1300))
+    const checks = pending.map(f => {
+      try { return document.fonts.check(`32px "${f}"`, sample); } catch (e) { return false; }
+    });
+    const missing = pending.filter((f, i) => !checks[i]);
+    if (!missing.length) { pending.forEach(f => fontReady.add(f)); return; }
+    const loads = missing.map(f => document.fonts.load(`32px "${f}"`, sample).catch(() => null));
+    await Promise.race([
+      Promise.all(loads),
+      new Promise(r => setTimeout(r, 1500))
     ]);
-    if (ok || document.fonts.check(`32px "${family}"`, sample || '你好')) fontReady.add(family);
-    else fontReady.add(family); // avoid retrying a failed CDN on every slider move
-  } catch (e) { fontReady.add(family); }
+  } catch (e) { /* fall back to system KaiTi */ }
+  // mark all as attempted; this prevents slider moves from repeatedly waiting on a failed CDN
+  pending.forEach(f => fontReady.add(f));
 }
 
 /* ------------------------------ pagination ------------------------------ */
@@ -688,20 +706,29 @@ function drawPaper(ctx, pageIndex) {
 }
 
 function drawHandChar(ctx, ch, x, y, size, style, rng, m, ink) {
-  const jitterY = (rng() - .5) * m * 4.6;
-  const rot = (rng() - .5) * m * .16;
-  const scale = 1 + (rng() - .5) * m * .12;
-  const alpha = .82 + rng() * .12;
+  // Even a “neat” hand is not typographically identical from glyph to glyph.
+  const jitterY = (rng() - .5) * (2.0 + m * 10.5);
+  const rot = (rng() - .5) * (.055 + m * .4);
+  const sx = 1 + (rng() - .5) * (.06 + m * .24);
+  const sy = 1 + (rng() - .5) * (.07 + m * .27);
+  const skew = (rng() - .5) * (.026 + m * .2);
+  const alpha = .62 + rng() * .34;
   ctx.save();
   ctx.translate(x, y + jitterY);
   ctx.rotate(rot);
-  ctx.scale(scale, scale);
+  ctx.transform(sx, skew, 0, sy, 0, 0);
   ctx.fillStyle = ink;
   ctx.globalAlpha = alpha;
   ctx.fillText(ch, 0, 0);
-  // ink pressure / slight ghost edge
-  ctx.globalAlpha = .10 + m * .05;
-  ctx.fillText(ch, .65, .55);
+  // uneven ink / ghost edge from pen pressure
+  if (rng() < .34) {
+    ctx.globalAlpha = .12 + m * .06;
+    ctx.fillText(ch, .55 + rng() * .5, .4 + rng() * .45);
+  }
+  if (rng() < .08) {
+    ctx.globalAlpha = .10;
+    ctx.fillText(ch, -.45, -.32);
+  }
   ctx.globalAlpha = 1;
   ctx.restore();
 }
@@ -790,26 +817,47 @@ function drawPage(page, index, canvas, scale = 1) {
   const pageLines = page.lines;
   pageLines.forEach((line, li) => {
     const size = line.size;
-    const mess = m * (line.type === 'heading' ? .55 : 1);
-    ctx.font = line.font || fontString(size, style);
+    const mess = m * (line.type === 'heading' ? .5 : 1);
+    const baseFont = line.font || fontString(size, style);
+    ctx.font = baseFont;
     ctx.textBaseline = 'alphabetic';
-    const baseY = line.baseline + Math.sin(li * .72 + index) * mess * 2.2 + (rng() - .5) * mess * 2.2;
-    const slope = (rng() - .5) * mess * 2.4 / Math.max(1, PAGE_W);
-    let x = MARGIN + line.indent + (rng() - .5) * mess * 2.4;
+    const baseY = line.baseline + Math.sin(li * .64 + index * .31) * (2.0 + mess * 7.0) + (rng() - .5) * (1.0 + mess * 3.4);
+    const slope = (rng() - .5) * (0.5 + mess * 7.2) / Math.max(1, PAGE_W);
+    let x = MARGIN + line.indent + (rng() - .5) * (2.0 + mess * 6.0);
     const lineBoxes = [];
+    let groupFont = baseFont;
+    let groupLeft = 0;
+    let groupDy = 0;
     for (const ch of line.text) {
       if (ch === ' ') {
-        x += measureToken(' ', line.font || fontString(size, style)) + (rng() - .5) * mess * 1.5;
+        x += measureToken(' ', baseFont) + (rng() - .5) * (0.8 + mess * 2.2);
         charIndex++;
         continue;
       }
-      const w = measureToken(ch, line.font || fontString(size, style));
-      const y = baseY + (x - MARGIN) * slope;
-      const charMess = /[0-9=+\-−×÷*/<>≤≥≈≠±∞∑∫√πθαβγΔ∂→⇒\[\]{}()^_]/.test(ch) ? mess * .58 : mess;
+      const isHan = /[\u3400-\u9fff]/.test(ch);
+      if (isHan && line.type !== 'heading' && groupLeft <= 0) {
+        const fam = pickMix(rng);
+        groupFont = fontString(size, { family: fam });
+        groupLeft = 2 + Math.floor(rng() * 3);
+        groupDy = (rng() - .5) * (1.4 + mess * 8.2);
+        ctx.font = groupFont;
+      } else if (!isHan) {
+        groupLeft = 0;
+        groupDy = 0;
+        groupFont = baseFont;
+        ctx.font = baseFont;
+      } else if (isHan) {
+        ctx.font = groupFont;
+      }
+      const w = measureToken(ch, isHan ? groupFont : baseFont);
+      const y = baseY + (x - MARGIN) * slope + groupDy;
+      const mathy = /[0-9=+\-−×÷*/<>≤≥≈≠±∞∑∫√πθαβγΔ∂→⇒\[\]{}()^_]/.test(ch);
+      const charMess = mathy ? mess * .55 : mess;
       drawHandChar(ctx, ch, x, y, size, style, rng, charMess, ink);
       lineBoxes.push({ x, y, w, text: ch, size, line: li, index: charIndex });
-      x += w + (rng() - .5) * mess * 3.1 + size * .012;
-      if (mess > .62 && rng() < .045) x += (rng() - .35) * mess * 8;
+      x += w + (rng() - .5) * (1.2 + mess * 5.8) + size * .012;
+      if (mess > .32 && rng() < .045) x += (rng() - .3) * mess * 14;
+      if (isHan && groupLeft > 0) groupLeft--;
       charIndex++;
     }
     boxes.push({ line: li, boxes: lineBoxes, text: line.text, size, y: baseY, type: line.type });
@@ -1019,15 +1067,23 @@ function drawHeroSample() {
     { t: '明天再补上。', size: 34, y: 330, indent: 22 }
   ];
   lines.forEach((ln, li) => {
-    ctx.font = `${ln.size}px "${style.family}", "Kaiti", cursive`;
-    ctx.fillStyle = '#202827'; ctx.textBaseline = 'alphabetic';
-    let x = 86 + ln.indent + (rng() - .5) * 4;
-    const base = ln.y + Math.sin(li * .8) * 2.4;
+    const baseFont = `${ln.size}px "${style.family}", "Kaiti", cursive`;
+    ctx.font = baseFont; ctx.fillStyle = '#202827'; ctx.textBaseline = 'alphabetic';
+    let x = 86 + ln.indent + (rng() - .5) * 5;
+    const base = ln.y + Math.sin(li * .8) * 3.4;
+    let groupLeft = 0, groupFont = baseFont;
     for (const ch of ln.t) {
-      const w = measureToken(ch, `${ln.size}px "${style.family}", "Kaiti", cursive`);
-      ctx.save(); ctx.translate(x, base + (rng() - .5) * 3); ctx.rotate((rng() - .5) * .045);
-      ctx.globalAlpha = .86 + rng() * .1; ctx.fillText(ch, 0, 0); ctx.restore();
-      x += w + (rng() - .5) * 2.1;
+      const han = /[\u3400-\u9fff]/.test(ch);
+      if (han && groupLeft <= 0) {
+        const fam = rng() < .3 ? 'Zhi Mang Xing' : 'Long Cang';
+        groupFont = `${ln.size}px "${fam}", "Kaiti", cursive`;
+        groupLeft = 2 + Math.floor(rng() * 3);
+        ctx.font = groupFont;
+      } else if (!han) { ctx.font = baseFont; groupFont = baseFont; groupLeft = 0; }
+      const w = measureToken(ch, groupFont);
+      drawHandChar(ctx, ch, x, base, ln.size, style, rng, li === 0 ? .3 : .52, '#202827');
+      x += w + (rng() - .5) * 3.2;
+      if (han && groupLeft > 0) groupLeft--;
     }
   });
   // crossed-out word + correction
@@ -1204,7 +1260,7 @@ function bindUI() {
 
   $('#regenerate').addEventListener('click', () => { state.seed = newSeed(); scheduleRender(20); toast('换了一版手写字迹'); });
   $('#resetBtn').addEventListener('click', () => {
-    state.settings = { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 8, paper: 'ruled', ink: 'black' };
+    state.settings = { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 68, correction: 8, paper: 'ruled', ink: 'black' };
     state.seed = 20261108;
     renderFontCards(); syncSettingsUI(); scheduleRender(20);
   });
@@ -1318,7 +1374,7 @@ window.addEventListener('load', init);
           <div class="section-label"><span>02</span><b>手感</b><i>越往右越像草稿</i></div>
           <label class="range-row"><span>字号</span><input id="fontSize" type="range" min="26" max="46" step="1" value="33"><b id="fontSizeV">33</b></label>
           <label class="range-row"><span>行距</span><input id="lineHeight" type="range" min="1.5" max="2.5" step="0.05" value="1.9"><b id="lineHeightV">1.90</b></label>
-          <label class="range-row"><span>凌乱</span><input id="mess" type="range" min="0" max="100" step="1" value="46"><b id="messV">46</b></label>
+          <label class="range-row"><span>凌乱</span><input id="mess" type="range" min="0" max="100" step="1" value="68"><b id="messV">68</b></label>
           <label class="range-row"><span>涂改</span><input id="correction" type="range" min="0" max="35" step="1" value="8"><b id="correctionV">8%</b></label>
         </div>
 
@@ -1392,6 +1448,9 @@ window.addEventListener('load', init);
   <div class="toast" id="toast"></div>
 </body>
 </html>
+
+
+
 
 
 
