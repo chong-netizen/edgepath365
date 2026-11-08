@@ -294,7 +294,10 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
 const PAGE_W = 1240;
 const PAGE_H = 1754;
 const MARGIN = 108;
-const MAX_PAGES = 24;
+const MAX_PAGES = 60;
+const MAX_CHARS = 90000;
+const MAX_FILE_MB = 8;
+const PREVIEW_SCALE = .85;
 
 const FONTS = {
   clean: {
@@ -328,7 +331,7 @@ const PAPER = {
 
 const state = {
   doc: { name: '示例 · 秋日笔记.docx', blocks: [] },
-  settings: { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 14, paper: 'ruled', ink: 'black' },
+  settings: { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 8, paper: 'ruled', ink: 'black' },
   seed: 20261108,
   pages: [],
   zoom: 1,
@@ -336,9 +339,23 @@ const state = {
   busy: false,
   pending: false,
   uploading: false,
+  rendered: new Set(),
+  pageEls: [],
+  observer: null,
   isSample: true,
-  maxReached: false
+  maxReached: false,
+  truncated: false
 };
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -390,6 +407,16 @@ function blocksFromPlain(text) {
   return blocks;
 }
 
+function blocksFromRaw(text) {
+  const out = [];
+  const paras = String(text || '').split(/\n+/).map(cleanText).filter(Boolean);
+  for (const t of paras) {
+    if (t.length < 20 && !/[。！？.!?；;]$/.test(t) && !/[=+\-×÷<>≤≥]/.test(t)) out.push({ type: 'h2', text: t });
+    else out.push({ type: 'p', text: t });
+  }
+  return out;
+}
+
 function blocksFromHtml(html) {
   const parser = new DOMParser();
   const dom = parser.parseFromString(html, 'text/html');
@@ -434,31 +461,49 @@ function blocksFromHtml(html) {
 /* ------------------------------ font helpers ------------------------------ */
 function currentFont() { return FONTS[state.settings.fontKey] || FONTS.clean; }
 function fontFamily(style = currentFont()) {
-  return `"${style.family}", "Caveat", "KaiTi", "STKaiti", "Segoe Print", cursive`;
+  return `"${style.family}", "Caveat", "KaiTi", "STKaiti", "Cambria Math", "Segoe UI Symbol", "Segoe Print", cursive`;
 }
 function fontString(size, style = currentFont()) { return `${size}px ${fontFamily(style)}`; }
 
 async function ensureFonts(text) {
   const style = currentFont();
-  try { if (document.fonts.check(`32px "${style.family}"`, String(text || '').slice(0, 900))) return; } catch (e) {}
-  const s = String(text || '').slice(0, 900);
+  const family = style.family;
+  if (fontReady.has(family)) return;
+  const sample = String(text || '').slice(0, 1200);
   try {
-    await Promise.race([
-      document.fonts.load(`32px "${style.family}"`, s || '你好，今天也要好好写字。'),
-      new Promise(r => setTimeout(r, 2600))
+    if (document.fonts.check(`32px "${family}"`, sample || '你好')) { fontReady.add(family); return; }
+  } catch (e) {}
+  try {
+    const ok = await Promise.race([
+      document.fonts.load(`32px "${family}"`, sample || '你好，今天也要好好写字。').then(() => true),
+      new Promise(r => setTimeout(() => r(false), 1300))
     ]);
-    await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1400))]);
-  } catch (e) { /* fallback to KaiTi */ }
+    if (ok || document.fonts.check(`32px "${family}"`, sample || '你好')) fontReady.add(family);
+    else fontReady.add(family); // avoid retrying a failed CDN on every slider move
+  } catch (e) { fontReady.add(family); }
 }
 
 /* ------------------------------ pagination ------------------------------ */
 const measureCanvas = document.createElement('canvas');
 const measureCtx = measureCanvas.getContext('2d');
+const widthCache = new Map();
+const fontReady = new Set();
+
+function measureToken(text, font) {
+  const key = font + '\u0000' + text;
+  const hit = widthCache.get(key);
+  if (hit !== undefined) return hit;
+  if (measureCtx.font !== font) measureCtx.font = font;
+  const w = measureCtx.measureText(text).width;
+  if (widthCache.size > 12000) widthCache.clear();
+  widthCache.set(key, w);
+  return w;
+}
 
 function wrapText(text, maxWidth, font) {
   measureCtx.font = font;
   const raw = String(text || '');
-  const tokens = raw.match(/[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]|[A-Za-z0-9]+(?:[’'\-][A-Za-z0-9]+)*|\s+|[\s\S]/g) || [];
+  const tokens = raw.match(/[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]|[0-9]+(?:[.,][0-9]+)?|[A-Za-z0-9]+(?:[’'\-][A-Za-z0-9]+)*|\s+|[\s\S]/g) || [];
   const lines = [];
   let line = '';
   let width = 0;
@@ -466,10 +511,10 @@ function wrapText(text, maxWidth, font) {
   for (const token of tokens) {
     if (/^\s+$/.test(token)) {
       line += ' ';
-      width += measureCtx.measureText(' ').width;
+      width += measureToken(' ', font);
       continue;
     }
-    const tw = measureCtx.measureText(token).width;
+    const tw = measureToken(token, font);
     if (width + tw > maxWidth && line && line.trim()) {
       push();
       if (/^[，。！？；：、）》】”’…]/.test(token) && lines.length) {
@@ -480,7 +525,7 @@ function wrapText(text, maxWidth, font) {
     if (tw > maxWidth) {
       // very long Latin token: split by characters
       for (const ch of token) {
-        const cw = measureCtx.measureText(ch).width;
+        const cw = measureToken(ch, font);
         if (width + cw > maxWidth && line) push();
         line += ch; width += cw;
       }
@@ -494,7 +539,7 @@ function wrapText(text, maxWidth, font) {
 
 function wrapParagraph(text, firstMax, restMax, font) {
   measureCtx.font = font;
-  const tokens = String(text || '').match(/[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]|[A-Za-z0-9]+(?:[’'\-][A-Za-z0-9]+)*|\s+|[\s\S]/g) || [];
+  const tokens = String(text || '').match(/[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]|[0-9]+(?:[.,][0-9]+)?|[A-Za-z0-9]+(?:[’'\-][A-Za-z0-9]+)*|\s+|[\s\S]/g) || [];
   const lines = [];
   let line = '', width = 0, first = true;
   const limit = () => first ? firstMax : restMax;
@@ -505,17 +550,17 @@ function wrapParagraph(text, firstMax, restMax, font) {
   };
   for (const token of tokens) {
     if (/^\s+$/.test(token)) {
-      if (line) { line += ' '; width += measureCtx.measureText(' ').width; }
+      if (line) { line += ' '; width += measureToken(' ', font); }
       continue;
     }
-    const tw = measureCtx.measureText(token).width;
+    const tw = measureToken(token, font);
     if (width + tw > limit() && line && line.trim()) {
       push();
       if (/^[，。！？；：、）》】”’…]/.test(token) && lines.length) { lines[lines.length - 1] += token; continue; }
     }
     if (tw > limit()) {
       for (const ch of token) {
-        const cw = measureCtx.measureText(ch).width;
+        const cw = measureToken(ch, font);
         if (width + cw > limit() && line) push();
         line += ch; width += cw;
       }
@@ -525,6 +570,23 @@ function wrapParagraph(text, firstMax, restMax, font) {
   }
   push();
   return lines.length ? lines : [''];
+}
+
+function trimBlocks(blocks) {
+  let total = 0;
+  const out = [];
+  for (const b of blocks) {
+    const t = String(b.text || '');
+    if (total + t.length > MAX_CHARS) {
+      const rest = MAX_CHARS - total;
+      if (rest > 30) out.push({ ...b, text: t.slice(0, rest) + '…' });
+      state.truncated = true;
+      break;
+    }
+    out.push(b);
+    total += t.length;
+  }
+  return out;
 }
 
 function buildPages(blocks) {
@@ -555,6 +617,7 @@ function buildPages(blocks) {
   };
 
   for (const block of blocks) {
+    if (tooMany) break;
     const isHeading = /^h[1-6]$/.test(block.type || '');
     if (!block.text) { y += body * .65; continue; }
     if (isHeading) {
@@ -710,10 +773,11 @@ function drawCorrection(ctx, box, size, rng, m, ink, index) {
   ctx.restore();
 }
 
-function drawPage(page, index, canvas) {
-  canvas.width = PAGE_W;
-  canvas.height = PAGE_H;
+function drawPage(page, index, canvas, scale = 1) {
+  canvas.width = Math.round(PAGE_W * scale);
+  canvas.height = Math.round(PAGE_H * scale);
   const ctx = canvas.getContext('2d');
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const style = currentFont();
   const ink = INKS[state.settings.ink] || INKS.black;
   const m = (state.settings.mess / 100) * style.bias;
@@ -735,13 +799,14 @@ function drawPage(page, index, canvas) {
     const lineBoxes = [];
     for (const ch of line.text) {
       if (ch === ' ') {
-        x += ctx.measureText(' ').width + (rng() - .5) * mess * 1.5;
+        x += measureToken(' ', line.font || fontString(size, style)) + (rng() - .5) * mess * 1.5;
         charIndex++;
         continue;
       }
-      const w = ctx.measureText(ch).width;
+      const w = measureToken(ch, line.font || fontString(size, style));
       const y = baseY + (x - MARGIN) * slope;
-      drawHandChar(ctx, ch, x, y, size, style, rng, mess, ink);
+      const charMess = /[0-9=+\-−×÷*/<>≤≥≈≠±∞∑∫√πθαβγΔ∂→⇒\[\]{}()^_]/.test(ch) ? mess * .58 : mess;
+      drawHandChar(ctx, ch, x, y, size, style, rng, charMess, ink);
       lineBoxes.push({ x, y, w, text: ch, size, line: li, index: charIndex });
       x += w + (rng() - .5) * mess * 3.1 + size * .012;
       if (mess > .62 && rng() < .045) x += (rng() - .35) * mess * 8;
@@ -818,7 +883,7 @@ function updateMeta() {
   $('#fileName').textContent = '当前：' + state.doc.name;
   $('#pageInfo').textContent = `PAGE 1 / ${pages}`;
   $('#zoomV').textContent = Math.round(state.zoom * 100) + '%';
-  if (state.maxReached) $('#docMeta').textContent += ' · 已截取前 24 页';
+  if (state.maxReached || state.truncated) $('#docMeta').textContent += ' · 已截取前 60 页';
 }
 
 function pageCssWidth() {
@@ -832,14 +897,50 @@ function applyPageWidths() {
   $$('.paper-page').forEach(el => { el.style.width = w + 'px'; });
 }
 
+function updatePageInfo() {
+  const area = $('#previewArea');
+  if (!area || !state.pageEls.length) return;
+  const areaTop = area.getBoundingClientRect().top;
+  let current = 1;
+  state.pageEls.forEach((el, i) => {
+    const r = el.wrap.getBoundingClientRect();
+    if (r.top - areaTop <= 90) current = i + 1;
+  });
+  const info = $('#pageInfo');
+  if (info) info.textContent = `PAGE ${current} / ${state.pages.length}`;
+}
+
+function setLoading(title, sub) {
+  const el = $('#loading'); if (!el) return;
+  el.classList.add('show');
+  const b = el.querySelector('b'), s = el.querySelector('small');
+  if (b) b.textContent = title || '正在生成手写…';
+  if (s) s.textContent = sub || '';
+}
+function setLoadingHide() {
+  const el = $('#loading'); if (el) el.classList.remove('show');
+}
+
+function renderPageEl(i) {
+  const el = state.pageEls[i];
+  if (!el || el.rendered) return;
+  drawPage(el.page, i, el.canvas, PREVIEW_SCALE);
+  el.rendered = true;
+  state.rendered.add(i);
+}
+
 function buildPreview() {
   const host = $('#pages');
   host.innerHTML = '';
+  if (state.observer) { state.observer.disconnect(); state.observer = null; }
+  state.pageEls = [];
+  state.rendered = new Set();
   const w = pageCssWidth();
   state.pages.forEach((page, i) => {
     const wrap = document.createElement('div');
     wrap.className = 'paper-page';
     wrap.style.width = w + 'px';
+    wrap.dataset.page = String(i);
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-label', `第 ${i + 1} 页手写预览`);
     wrap.appendChild(canvas);
@@ -848,21 +949,35 @@ function buildPreview() {
     tag.textContent = `${String(i + 1).padStart(2, '0')} / ${String(state.pages.length).padStart(2, '0')}`;
     wrap.appendChild(tag);
     host.appendChild(wrap);
-    drawPage(page, i, canvas);
+    state.pageEls.push({ wrap, canvas, page, rendered: false, index: i });
   });
   updateMeta();
+  const area = $('#previewArea');
+  requestAnimationFrame(updatePageInfo);
+  if ('IntersectionObserver' in window) {
+    state.observer = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) renderPageEl(Number(en.target.dataset.page));
+      });
+    }, { root: area, rootMargin: '1200px 0px' });
+    state.pageEls.forEach(el => state.observer.observe(el.wrap));
+  }
+  // the first spread appears immediately; the rest renders lazily on scroll
+  renderPageEl(0);
+  if (state.pageEls.length > 1) renderPageEl(1);
 }
 
 async function render() {
   if (state.busy) { state.pending = true; return; }
   state.busy = true;
-  $('#loading').classList.add('show');
+  state.truncated = false;
+  setLoading('正在排版手写页面…', '加载字形 · 计算换行 · 分页');
   const text = state.doc.blocks.map(b => b.text).join('');
   await ensureFonts(text);
-  // yield so the loading state paints
-  await new Promise(r => setTimeout(r, 40));
+  await new Promise(r => setTimeout(r, 12));
   try {
-    state.pages = buildPages(state.doc.blocks);
+    const blocks = trimBlocks(state.doc.blocks);
+    state.pages = buildPages(blocks);
     buildPreview();
     drawHeroSample();
   } catch (err) {
@@ -870,7 +985,7 @@ async function render() {
     toast('渲染失败：' + (err.message || err));
   } finally {
     state.busy = false;
-    $('#loading').classList.remove('show');
+    setLoadingHide();
     if (state.pending) { state.pending = false; render(); }
   }
 }
@@ -909,7 +1024,7 @@ function drawHeroSample() {
     let x = 86 + ln.indent + (rng() - .5) * 4;
     const base = ln.y + Math.sin(li * .8) * 2.4;
     for (const ch of ln.t) {
-      const w = ctx.measureText(ch).width;
+      const w = measureToken(ch, `${ln.size}px "${style.family}", "Kaiti", cursive`);
       ctx.save(); ctx.translate(x, base + (rng() - .5) * 3); ctx.rotate((rng() - .5) * .045);
       ctx.globalAlpha = .86 + rng() * .1; ctx.fillText(ch, 0, 0); ctx.restore();
       x += w + (rng() - .5) * 2.1;
@@ -953,21 +1068,28 @@ async function handleFile(file) {
     toast('请上传 .docx 文件；旧版 .doc 请先另存为 .docx');
     return;
   }
-  if (file.size > 18 * 1024 * 1024) { toast('文件太大，建议小于 18MB'); return; }
+  if (file.size > MAX_FILE_MB * 1024 * 1024) { toast(`文件太大，最大支持 ${MAX_FILE_MB}MB`); return; }
   if (!window.mammoth) { toast('Word 解析库还在加载，请稍后再试'); return; }
   state.uploading = true;
-  $('#loading').classList.add('show');
+  setLoading('正在解析 Word…', `${(file.size / 1024 / 1024).toFixed(1)}MB · 本地读取`);
   try {
     const buffer = await file.arrayBuffer();
-    const result = await window.mammoth.convertToHtml({ arrayBuffer: buffer });
-    const blocks = blocksFromHtml(result.value || '');
+    let blocks = [];
+    if (file.size > 1.1 * 1024 * 1024) {
+      // 大文件优先走纯文本提取：跳过图片解码，速度快很多
+      const raw = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+      blocks = blocksFromRaw(raw.value || '');
+    } else {
+      const result = await window.mammoth.convertToHtml({ arrayBuffer: buffer });
+      blocks = blocksFromHtml(result.value || '');
+    }
     if (!blocks.length) throw new Error('没有读到文字内容（可能是扫描图片或空文档）');
     setDoc(file.name, blocks, false);
     toast(`已读取 ${blocks.length} 段文字`);
   } catch (err) {
     console.error(err);
     toast('读取失败：' + (err.message || err));
-    $('#loading').classList.remove('show');
+    setLoadingHide();
   } finally {
     state.uploading = false;
   }
@@ -978,39 +1100,52 @@ function safeName() {
   return (state.doc.name.replace(/\.docx$/i, '') || '手写稿').replace(/[\\/:*?"<>|]/g, '_').slice(0, 50);
 }
 
-async function exportPng() {
-  if (!state.pages.length) return;
-  const canvases = $$('#pages canvas');
-  if (!canvases.length) return;
-  toast(`正在导出 ${canvases.length} 张 PNG…`);
-  for (let i = 0; i < canvases.length; i++) {
-    const canvas = canvases[i];
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    if (!blob) continue;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${safeName()}_手写_${String(i + 1).padStart(2, '0')}.png`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    await new Promise(r => setTimeout(r, 140));
-  }
-  toast('PNG 已开始下载');
+function exportCanvas(i) {
+  const c = document.createElement('canvas');
+  drawPage(state.pages[i], i, c, 1);
+  return c;
 }
 
-function exportPdf() {
+async function exportPng() {
+  if (!state.pages.length) return;
+  const total = state.pages.length;
+  setLoading('正在导出 PNG…', `高分辨率重绘 0 / ${total} 页`);
+  try {
+    for (let i = 0; i < total; i++) {
+      const canvas = exportCanvas(i);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      if (!blob) continue;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${safeName()}_手写_${String(i + 1).padStart(2, '0')}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setLoading('正在导出 PNG…', `高分辨率重绘 ${i + 1} / ${total} 页`);
+      await new Promise(r => setTimeout(r, 90));
+    }
+    toast(`PNG 已开始下载（${total} 页）`);
+  } finally { setLoadingHide(); }
+}
+
+async function exportPdf() {
   if (!state.pages.length) return;
   if (!window.jspdf || !window.jspdf.jsPDF) { toast('PDF 组件未加载，请使用 PNG 导出'); return; }
-  const canvases = $$('#pages canvas');
-  if (!canvases.length) return;
+  const total = state.pages.length;
+  setLoading('正在导出 PDF…', `高分辨率重绘 0 / ${total} 页`);
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-  canvases.forEach((canvas, i) => {
-    if (i > 0) pdf.addPage();
-    const img = canvas.toDataURL('image/jpeg', .92);
-    pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-  });
-  pdf.save(`${safeName()}_手写.pdf`);
-  toast('PDF 已开始下载');
+  try {
+    for (let i = 0; i < total; i++) {
+      const canvas = exportCanvas(i);
+      if (i > 0) pdf.addPage();
+      const img = canvas.toDataURL('image/jpeg', .9);
+      pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      setLoading('正在导出 PDF…', `高分辨率重绘 ${i + 1} / ${total} 页`);
+      if (i % 2 === 1) await new Promise(r => setTimeout(r, 0));
+    }
+    pdf.save(`${safeName()}_手写.pdf`);
+    toast(`PDF 已开始下载（${total} 页）`);
+  } finally { setLoadingHide(); }
 }
 
 /* ------------------------------ UI init ------------------------------ */
@@ -1069,7 +1204,7 @@ function bindUI() {
 
   $('#regenerate').addEventListener('click', () => { state.seed = newSeed(); scheduleRender(20); toast('换了一版手写字迹'); });
   $('#resetBtn').addEventListener('click', () => {
-    state.settings = { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 14, paper: 'ruled', ink: 'black' };
+    state.settings = { fontKey: 'clean', fontSize: 33, lineHeight: 1.9, mess: 46, correction: 8, paper: 'ruled', ink: 'black' };
     state.seed = 20261108;
     renderFontCards(); syncSettingsUI(); scheduleRender(20);
   });
@@ -1078,8 +1213,8 @@ function bindUI() {
     state.isSample = true; state.seed = newSeed(); scheduleRender(20);
   });
 
-  $('#zoomIn').addEventListener('click', () => { state.zoom = clamp(state.zoom + .1, .7, 1.5); applyPageWidths(); $('#zoomV').textContent = Math.round(state.zoom * 100) + '%'; });
-  $('#zoomOut').addEventListener('click', () => { state.zoom = clamp(state.zoom - .1, .7, 1.5); applyPageWidths(); $('#zoomV').textContent = Math.round(state.zoom * 100) + '%'; });
+  $('#zoomIn').addEventListener('click', () => { state.zoom = clamp(state.zoom + .1, .7, 1.4); applyPageWidths(); $('#zoomV').textContent = Math.round(state.zoom * 100) + '%'; });
+  $('#zoomOut').addEventListener('click', () => { state.zoom = clamp(state.zoom - .1, .7, 1.4); applyPageWidths(); $('#zoomV').textContent = Math.round(state.zoom * 100) + '%'; });
   $('#exportPng').addEventListener('click', exportPng);
   $('#exportPdf').addEventListener('click', exportPdf);
 
@@ -1097,6 +1232,7 @@ function bindUI() {
   });
 
   window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(applyPageWidths, 120); });
+  $('#previewArea').addEventListener('scroll', () => { clearTimeout(window.__pscroll); window.__pscroll = setTimeout(updatePageInfo, 80); }, { passive: true });
 }
 
 function closePaste() { $('#pasteModal').classList.remove('show'); }
@@ -1169,7 +1305,7 @@ window.addEventListener('load', init);
           <input type="file" id="fileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
           <div class="drop-icon">↥</div>
           <b>把 .docx 拖到这里</b>
-          <span>或 <button id="browseBtn">选择文件</button> · 也可以直接粘贴文字</span>
+          <span>或 <button id="browseBtn">选择文件</button> · 最大 8MB · 也可粘贴文字</span>
           <small id="fileName">当前：示例文档</small>
         </div>
 
@@ -1183,7 +1319,7 @@ window.addEventListener('load', init);
           <label class="range-row"><span>字号</span><input id="fontSize" type="range" min="26" max="46" step="1" value="33"><b id="fontSizeV">33</b></label>
           <label class="range-row"><span>行距</span><input id="lineHeight" type="range" min="1.5" max="2.5" step="0.05" value="1.9"><b id="lineHeightV">1.90</b></label>
           <label class="range-row"><span>凌乱</span><input id="mess" type="range" min="0" max="100" step="1" value="46"><b id="messV">46</b></label>
-          <label class="range-row"><span>涂改</span><input id="correction" type="range" min="0" max="35" step="1" value="14"><b id="correctionV">14%</b></label>
+          <label class="range-row"><span>涂改</span><input id="correction" type="range" min="0" max="35" step="1" value="8"><b id="correctionV">8%</b></label>
         </div>
 
         <div class="control-section">
@@ -1256,6 +1392,8 @@ window.addEventListener('load', init);
   <div class="toast" id="toast"></div>
 </body>
 </html>
+
+
 
 
 
